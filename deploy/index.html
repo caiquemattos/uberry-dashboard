@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestão de Dono — Avaliação de Maturidade</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --blue:#2557B7;--blue-dark:#1A3D8F;--blue-light:#EBF2FF;--blue-mid:#3B82F6;
+  --black:#111827;--gray:#6B7280;--gray-light:#9CA3AF;--border:#E5E7EB;
+  --bg:#F8FAFC;--card:#FFFFFF;--red:#EF4444;--green:#10B981;--amber:#F59E0B;
+  --r:10px;--shadow:0 1px 6px rgba(0,0,0,.1);
+}
+body{background:var(--bg);color:var(--black);font-family:'Segoe UI',system-ui,Arial,sans-serif;font-size:15px;min-height:100vh}
+a{color:var(--blue);text-decoration:none}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit;font-size:inherit}
+.hidden{display:none!important}
+
+/* ── HEADER ── */
+.header{background:#fff;border-bottom:2px solid var(--blue);padding:0 20px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 8px rgba(37,87,183,.12)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-text{line-height:1.1}
+.logo-text .gestao{font-size:.85rem;font-weight:700;color:var(--black);letter-spacing:.02em}
+.logo-text .dono{font-size:1.1rem;font-weight:900;color:#fff;background:var(--blue);
+  padding:1px 8px;border-radius:3px;display:inline-block}
+.header-right{display:flex;align-items:center;gap:12px}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--gray)}
+.user-chip .avatar{width:30px;height:30px;border-radius:50%;background:var(--blue);
+  color:#fff;font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center}
+.btn-logout{background:none;border:1px solid var(--border);border-radius:6px;
+  padding:5px 12px;font-size:.78rem;color:var(--gray)}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+
+/* ── LAYOUT ── */
+.page{max-width:900px;margin:0 auto;padding:24px 16px}
+.page-wide{max-width:1100px;margin:0 auto;padding:24px 16px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px 22px;border-radius:8px;font-weight:600;font-size:.9rem;border:none;transition:.15s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-secondary{background:var(--blue-light);color:var(--blue);border:1px solid #c7d9f8}
+.btn-secondary:hover{background:#dbeafe}
+.btn-danger{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:6px 14px;font-size:.8rem}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;box-shadow:var(--shadow)}
+.card-title{font-size:1rem;font-weight:700;margin-bottom:4px}
+.card-sub{font-size:.82rem;color:var(--gray);margin-bottom:16px}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:.82rem;font-weight:600;margin-bottom:6px;color:var(--black)}
+.form-label span{color:var(--red)}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
+  font-size:.9rem;outline:none;transition:.15s;background:#fff}
+.form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,87,183,.12)}
+.form-input.err{border-color:var(--red)}
+.form-select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
+  font-size:.9rem;outline:none;background:#fff;appearance:none;cursor:pointer}
+.form-select:focus{border-color:var(--blue)}
+.form-error{font-size:.78rem;color:var(--red);margin-top:4px}
+.form-hint{font-size:.78rem;color:var(--gray);margin-top:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+
+/* ── ALERTS ── */
+.alert{padding:12px 16px;border-radius:8px;font-size:.85rem;margin-bottom:16px;display:flex;align-items:flex-start;gap:8px}
+.alert-info{background:#EBF2FF;border:1px solid #c7d9f8;color:var(--blue-dark)}
+.alert-success{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.alert-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.alert-error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:600}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-green{background:#ecfdf5;color:#065f46}
+.badge-amber{background:#fffbeb;color:#92400e}
+.badge-red{background:#fef2f2;color:#991b1b}
+.badge-gray{background:#f3f4f6;color:#374151}
+
+/* ── LANDING ── */
+.landing{min-height:100vh;background:linear-gradient(160deg,#f0f5ff 0%,#fff 60%)}
+.landing-hero{text-align:center;padding:60px 20px 40px}
+.landing-logo{margin-bottom:24px}
+.landing-logo .g1{font-size:2.2rem;font-weight:900;color:var(--black);letter-spacing:-.02em}
+.landing-logo .g2{display:inline-block;font-size:2.8rem;font-weight:900;color:#fff;
+  background:var(--blue);padding:2px 18px;border-radius:6px;margin-top:-4px}
+.landing-hero h2{font-size:1.3rem;color:var(--gray);font-weight:400;margin-top:20px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.6}
+.landing-cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:680px;margin:40px auto 0}
+@media(max-width:560px){.landing-cards{grid-template-columns:1fr;padding:0 16px}}
+.landing-card{background:#fff;border:2px solid var(--border);border-radius:16px;
+  padding:30px 24px;text-align:center;cursor:pointer;transition:.2s}
+.landing-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(37,87,183,.15);transform:translateY(-2px)}
+.landing-card .icon{font-size:2.5rem;margin-bottom:12px}
+.landing-card h3{font-size:1.1rem;font-weight:700;margin-bottom:8px}
+.landing-card p{font-size:.85rem;color:var(--gray);line-height:1.5}
+.landing-footer{text-align:center;padding:40px 20px 20px;color:var(--gray-light);font-size:.8rem}
+
+/* ── AUTH ── */
+.auth-wrap{min-height:100vh;background:linear-gradient(160deg,#f0f5ff 0%,#fff 60%);
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.auth-box{background:#fff;border:1px solid var(--border);border-radius:16px;
+  padding:36px 32px;width:100%;max-width:460px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-logo .g1{font-size:1.4rem;font-weight:900;color:var(--black)}
+.auth-logo .g2{display:inline-block;font-size:1.8rem;font-weight:900;color:#fff;
+  background:var(--blue);padding:1px 12px;border-radius:4px}
+.auth-title{font-size:1.2rem;font-weight:700;margin-bottom:6px}
+.auth-sub{font-size:.85rem;color:var(--gray);margin-bottom:24px}
+.auth-switch{text-align:center;margin-top:20px;font-size:.85rem;color:var(--gray)}
+.auth-switch a{font-weight:600}
+
+/* ── CODE INPUT ── */
+.code-input-wrap{display:flex;gap:8px;justify-content:center;margin:16px 0}
+.code-input{width:46px;height:52px;border:2px solid var(--border);border-radius:8px;
+  text-align:center;font-size:1.4rem;font-weight:700;outline:none;text-transform:uppercase;
+  transition:.15s}
+.code-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,87,183,.12)}
+.code-display{background:var(--blue-light);border:2px dashed var(--blue);border-radius:10px;
+  padding:14px 24px;text-align:center}
+.code-display .code-val{font-size:2rem;font-weight:900;letter-spacing:.2em;color:var(--blue);font-family:monospace}
+.code-display .code-lbl{font-size:.78rem;color:var(--gray);margin-top:4px}
+
+/* ── QUESTIONNAIRE ── */
+.q-header{background:#fff;border-bottom:1px solid var(--border);padding:14px 20px;
+  position:sticky;top:60px;z-index:90}
+.q-progress-bar{height:6px;background:var(--border);border-radius:3px;margin-top:10px;overflow:hidden}
+.q-progress-fill{height:100%;background:var(--blue);border-radius:3px;transition:.4s}
+.q-meta{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--gray)}
+.q-dim-name{font-weight:700;color:var(--black)}
+.q-count{color:var(--gray)}
+
+.q-body{max-width:720px;margin:0 auto;padding:24px 16px}
+.q-dim-header{margin-bottom:24px}
+.q-dim-badge{display:inline-block;background:var(--blue-light);color:var(--blue);
+  font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:99px;margin-bottom:8px}
+.q-dim-title{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+.q-dim-desc{font-size:.88rem;color:var(--gray);line-height:1.5}
+
+.q-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;
+  padding:20px;margin-bottom:16px;transition:.2s}
+.q-card.answered{border-color:#a7f3d0}
+.q-text{font-size:.95rem;font-weight:600;line-height:1.5;margin-bottom:16px}
+.q-help{font-size:.8rem;color:var(--gray);margin-top:-10px;margin-bottom:14px;line-height:1.4}
+.scale-options{display:flex;flex-direction:column;gap:8px}
+.scale-opt{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;
+  border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s}
+.scale-opt:hover{border-color:var(--blue-mid);background:#f8faff}
+.scale-opt.selected{border-color:var(--blue);background:var(--blue-light)}
+.scale-opt input[type=radio]{accent-color:var(--blue);width:16px;height:16px;flex-shrink:0;margin-top:2px}
+.scale-opt-label{flex:1}
+.scale-opt-num{font-weight:700;color:var(--blue);font-size:.85rem}
+.scale-opt-desc{font-size:.82rem;color:var(--gray);margin-top:1px}
+.comment-area{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px;
+  font-size:.85rem;resize:vertical;min-height:70px;outline:none;margin-top:10px;transition:.15s}
+.comment-area:focus{border-color:var(--blue)}
+.comment-toggle{font-size:.78rem;color:var(--blue);cursor:pointer;margin-top:8px;display:inline-block}
+
+.q-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── RESULTS ── */
+.result-hero{text-align:center;padding:32px 20px 24px;background:#fff;border-bottom:1px solid var(--border)}
+.result-score-big{font-size:3.5rem;font-weight:900;color:var(--blue);line-height:1}
+.result-score-max{font-size:1rem;color:var(--gray);font-weight:400}
+.result-classification{display:inline-block;margin-top:8px;padding:6px 18px;border-radius:99px;font-weight:700;font-size:.95rem}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.result-grid{grid-template-columns:1fr}}
+.radar-wrap{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.radar-title{font-size:.9rem;font-weight:700;margin-bottom:12px}
+.radar-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:12px;height:4px;border-radius:2px}
+.dim-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.dim-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);font-size:.75rem;color:var(--gray);text-transform:uppercase;letter-spacing:.05em}
+.dim-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.dim-table tr:last-child td{border-bottom:none}
+.score-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px;width:100%}
+.score-bar-fill{height:100%;border-radius:3px;background:var(--blue)}
+.respondents-note{font-size:.8rem;color:var(--gray);margin-top:6px}
+
+/* ── ADMIN ── */
+.admin-tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto}
+.admin-tab{padding:10px 20px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;
+  background:none;color:var(--gray);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.admin-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.admin-tab:hover{color:var(--black)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+@media(max-width:700px){.stat-grid{grid-template-columns:1fr 1fr}}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat-val{font-size:1.8rem;font-weight:900;color:var(--blue)}
+.stat-lbl{font-size:.78rem;color:var(--gray);margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.data-table th{text-align:left;padding:10px 12px;background:#f9fafb;border-bottom:1px solid var(--border);font-size:.75rem;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.data-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-table tr:hover td{background:#f8faff}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:#fff}
+
+/* ── MISC ── */
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}
+.flex{display:flex}.flex-col{flex-direction:column}.items-center{align-items:center}
+.justify-between{justify-content:space-between}.gap8{gap:8px}.gap12{gap:12px}
+.text-sm{font-size:.82rem}.text-xs{font-size:.75rem}.text-gray{color:var(--gray)}
+.text-blue{color:var(--blue)}.font-bold{font-weight:700}.text-center{text-align:center}
+.spinner{border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;
+  width:28px;height:28px;animation:spin .7s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:var(--gray)}
+.empty-icon{font-size:2.5rem;margin-bottom:10px}
+
+/* ── STATUS INDICATORS ── */
+.status{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600}
+.status::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-active::before{background:var(--green)}
+.status-paused::before{background:var(--amber)}
+.status-closed::before{background:var(--red)}
+.status-draft::before{background:var(--gray)}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#111;color:#fff;padding:10px 20px;border-radius:8px;font-size:.85rem;
+  z-index:9999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;
+  align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:480px;
+  max-height:90vh;overflow-y:auto}
+.modal-title{font-size:1.1rem;font-weight:700;margin-bottom:16px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+@media(max-width:480px){
+  .auth-box{padding:24px 16px}
+  .q-body{padding:14px 10px}
+  .page{padding:14px 12px}
+  .page-wide{padding:14px 12px}
+  .landing-hero{padding:36px 14px 20px}
+  .landing-logo .g1{font-size:1.7rem}
+  .landing-logo .g2{font-size:2.2rem}
+  .landing-hero h2{font-size:1.1rem}
+  .q-dim-title{font-size:1.1rem}
+  .modal{padding:20px 16px}
+  .result-hero{padding:22px 14px 16px}
+  .result-score-big{font-size:2.8rem}
+  .code-input{width:40px;height:46px;font-size:1.2rem}
+  .admin-tabs{gap:0}
+  .admin-tab{padding:8px 12px;font-size:.78rem}
+}
+/* Touch targets */
+.scale-opt{min-height:48px;padding:12px 14px}
+@media(max-width:600px){
+  .q-nav{flex-direction:column-reverse;gap:10px}
+  .q-nav .btn{width:100%;justify-content:center}
+  .radar-wrap canvas{max-height:260px!important}
+  .form-row{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:1fr 1fr}
+}
+/* Privacy disclaimer block */
+.privacy-note{background:#f9fafb;border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;font-size:.78rem;color:var(--gray);line-height:1.6;margin-top:10px}
+.privacy-note strong{color:var(--black)}
+/* Share disclaimer */
+.share-disclaimer{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;
+  padding:14px;font-size:.82rem;color:#92400e;line-height:1.6;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="modal-root"></div>
+<div id="header-root"></div>
+<div id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA LAYER  (localStorage)
+// ══════════════════════════════════════════════
+const DB = {
+  get(k){try{return JSON.parse(localStorage.getItem(k))||null}catch{return null}},
+  set(k,v){localStorage.setItem(k,JSON.stringify(v))},
+  users(){return this.get('gd_users')||[]},
+  saveUsers(u){this.set('gd_users',u)},
+  groups(){return this.get('gd_groups')||[]},
+  saveGroups(g){this.set('gd_groups',g)},
+  sessions(){return this.get('gd_sessions')||[]},
+  saveSessions(s){this.set('gd_sessions',s)},
+  currentUser(){return this.get('gd_current')},
+  login(u){this.set('gd_current',u)},
+  logout(){localStorage.removeItem('gd_current')},
+  questionnaire(){return this.get('gd_questionnaire')||DEFAULT_Q},
+  saveQuestionnaire(q){this.set('gd_questionnaire',q)},
+  resultTexts(){return this.get('gd_result_texts')||DEFAULT_RESULT_TEXTS},
+};
+
+// ── Default admin user
+function ensureAdmin(){
+  const users = DB.users();
+  if(!users.find(u=>u.role==='admin')){
+    users.push({id:'admin-1',name:'Administrador',email:'admin@gestaododono.com.br',
+      password:'admin123',role:'admin',company:'C1.SHIFT',position:'Admin',
+      createdAt:new Date().toISOString()});
+    DB.saveUsers(users);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  QUESTIONNAIRE DATA
+// ══════════════════════════════════════════════
+const DEFAULT_Q = {
+  id:'q1',
+  title:'Avaliação de Maturidade de Gestão',
+  description:'Avalie a maturidade de gestão da sua empresa em 8 dimensões fundamentais.',
+  version:'1.0',
+  status:'active',
+  createdAt:new Date().toISOString(),
+  dimensions:[
+    {
+      id:'dim1',name:'Direção e Prioridades',order:1,weight:1,
+      description:'Clareza sobre para onde a empresa vai e o que é prioridade.',
+      questions:[
+        {id:'d1q1',text:'A empresa tem metas claras e conhecidas para os próximos 12 meses.',required:true},
+        {id:'d1q2',text:'As prioridades estratégicas são comunicadas e compreendidas pelas lideranças.',required:true},
+        {id:'d1q3',text:'As decisões estratégicas seguem critérios definidos, e não apenas intuição do dono.',required:true},
+        {id:'d1q4',text:'A empresa revisa e ajusta seu planejamento de forma regular.',required:true},
+      ]
+    },
+    {
+      id:'dim2',name:'Papéis e Responsabilidades',order:2,weight:1,
+      description:'Clareza sobre quem faz o quê, quem decide e quem presta contas.',
+      questions:[
+        {id:'d2q1',text:'Está claro quem decide, quem executa e quem acompanha os principais temas da empresa.',required:true},
+        {id:'d2q2',text:'Os papéis e responsabilidades dos líderes estão formalizados e são respeitados.',required:true},
+        {id:'d2q3',text:'Quando surge um problema, as pessoas sabem quem é o responsável por resolvê-lo.',required:true},
+        {id:'d2q4',text:'Não há sobreposição relevante de funções que gere conflito ou retrabalho.',required:true},
+      ]
+    },
+    {
+      id:'dim3',name:'Decisão e Autonomia',order:3,weight:1,
+      description:'Capacidade da empresa de decidir e agir sem depender excessivamente dos donos.',
+      questions:[
+        {id:'d3q1',text:'Se o principal sócio/dono se afastasse por 30 dias, as decisões importantes continuariam sendo tomadas.',required:true},
+        {id:'d3q2',text:'Os líderes têm autonomia e clareza suficientes para tomar decisões em sua área sem precisar consultar o dono a todo momento.',required:true},
+        {id:'d3q3',text:'Existe critério claro sobre quais decisões precisam do dono e quais podem ser delegadas.',required:true},
+        {id:'d3q4',text:'A empresa não trava quando algum líder-chave está ausente.',required:true},
+      ]
+    },
+    {
+      id:'dim4',name:'Reuniões e Execução',order:4,weight:1,
+      description:'Efetividade das reuniões e capacidade de transformar decisões em ação.',
+      questions:[
+        {id:'d4q1',text:'As reuniões da empresa têm pauta definida, geram decisões claras e têm responsáveis e prazos.',required:true},
+        {id:'d4q2',text:'As decisões tomadas nas reuniões são acompanhadas e de fato executadas.',required:true},
+        {id:'d4q3',text:'Existe uma rotina regular de reuniões de gestão que a equipe segue com disciplina.',required:true},
+        {id:'d4q4',text:'A empresa consegue transformar intenção em execução com consistência.',required:true},
+      ]
+    },
+    {
+      id:'dim5',name:'Indicadores e Resultados',order:5,weight:1,
+      description:'Uso de dados e indicadores para acompanhar e melhorar o desempenho.',
+      questions:[
+        {id:'d5q1',text:'A empresa acompanha regularmente indicadores de desempenho nas áreas principais.',required:true},
+        {id:'d5q2',text:'Quando um resultado foge do esperado, a empresa sabe identificar a causa e agir.',required:true},
+        {id:'d5q3',text:'As metas são acompanhadas com frequência e não apenas no final do período.',required:true},
+        {id:'d5q4',text:'Os dados e indicadores orientam as decisões, e não apenas a percepção ou intuição.',required:true},
+      ]
+    },
+    {
+      id:'dim6',name:'Pessoas e Liderança',order:6,weight:1,
+      description:'Desenvolvimento de lideranças e capacidade de reter e evoluir pessoas-chave.',
+      questions:[
+        {id:'d6q1',text:'Os líderes e gestores da empresa estão preparados para liderar suas equipes com autonomia.',required:true},
+        {id:'d6q2',text:'A empresa tem um processo claro de avaliação e desenvolvimento de pessoas.',required:true},
+        {id:'d6q3',text:'A empresa não depende excessivamente de poucas pessoas para manter o ritmo da operação.',required:true},
+        {id:'d6q4',text:'Há clareza sobre o que é esperado de cada liderança e como seu desempenho é avaliado.',required:true},
+      ]
+    },
+    {
+      id:'dim7',name:'Família e Empresa',order:7,weight:1,
+      description:'Separação entre gestão profissional e relações familiares ou pessoais.',
+      questions:[
+        {id:'d7q1',text:'As decisões da empresa são tomadas majoritariamente com base em critérios profissionais, não em preferências familiares.',required:true},
+        {id:'d7q2',text:'Existem regras claras sobre a participação de familiares na gestão da empresa.',required:true},
+        {id:'d7q3',text:'Os conflitos entre sócios ou familiares não impactam significativamente o funcionamento da empresa.',required:true},
+        {id:'d7q4',text:'A remuneração dos sócios e familiares segue critérios definidos, separando pro-labore de distribuição de lucros.',required:true},
+      ]
+    },
+    {
+      id:'dim8',name:'Continuidade e Sucessão',order:8,weight:1,
+      description:'Preparação da empresa para crescer, mudar e continuar sem depender das mesmas pessoas.',
+      questions:[
+        {id:'d8q1',text:'A empresa sabe quem poderia assumir as funções-chave se um líder importante saísse.',required:true},
+        {id:'d8q2',text:'Existe algum plano ou discussão sobre sucessão nas posições críticas da empresa.',required:true},
+        {id:'d8q3',text:'O conhecimento crítico da empresa está documentado e não depende apenas da memória das pessoas.',required:true},
+        {id:'d8q4',text:'A empresa está preparada para crescer sem que o crescimento dependa inteiramente do esforço pessoal dos donos.',required:true},
+      ]
+    },
+  ]
+};
+
+const SCALE = [
+  {value:0,label:'Não existe ou não acontece'},
+  {value:1,label:'Acontece de forma informal'},
+  {value:2,label:'Existe parcialmente, ainda depende muito das pessoas'},
+  {value:3,label:'Existe, é usado com frequência e ajuda a gestão'},
+  {value:4,label:'Está bem estruturado, é seguido e ajuda a empresa a evoluir'},
+];
+
+const DEFAULT_RESULT_TEXTS = [
+  {min:0,max:1.0,classification:'Gestão muito dependente dos donos',badge:'badge-red',
+   text:'Sua empresa provavelmente funciona com muita força empreendedora, mas ainda depende demais da presença, memória e decisão dos donos. O risco é crescer com gargalos invisíveis: decisões centralizadas, reuniões pouco efetivas, baixa continuidade e dificuldade para transformar intenção em execução.',
+   next:'Identificar onde a empresa mais depende dos donos e quais decisões poderiam ser melhor distribuídas.'},
+  {min:1.1,max:2.5,classification:'Gestão informal',badge:'badge-amber',
+   text:'Sua empresa já possui alguns sinais de organização, mas ainda funciona mais por esforço individual das pessoas do que por processos e combinados claros. Muitas decisões ainda passam pelos donos e as práticas existentes dependem da disciplina de poucos.',
+   next:'Priorizar os principais gargalos de gestão e transformar boas práticas informais em papéis claros e rotinas consistentes.'},
+  {min:2.6,max:3.5,classification:'Gestão em estruturação',badge:'badge-blue',
+   text:'Sua empresa já tem uma base importante de gestão, com práticas que funcionam e lideranças com alguma autonomia. O próximo salto está em transformar o que já funciona em rotina, combinado e acompanhamento sistemático.',
+   next:'Consolidar as práticas existentes, fortalecer os processos de decisão e preparar a empresa para o próximo ciclo de crescimento.'},
+  {min:3.6,max:4.0,classification:'Boa maturidade de gestão',badge:'badge-green',
+   text:'Sua empresa já demonstra sinais relevantes de maturidade em gestão. O desafio agora é garantir perenidade e legado por meio da consolidação de boas práticas, redução da dependência de pessoas-chave e preparação para crescimento, sucessão e decisões mais complexas.',
+   next:'Revisar se as práticas atuais estão documentadas, sendo seguidas e preparadas para sustentar novos ciclos de crescimento.'},
+];
+
+// ══════════════════════════════════════════════
+//  PENDING STATE  (carries code across page transitions)
+// ══════════════════════════════════════════════
+const Pending = {code: null, newGroup: false, clear(){this.code=null;this.newGroup=false;}};
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function genId(prefix){return (prefix||'id')+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)}
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
+function ensureUniqueCode(){let c,tries=0;do{c=genCode();tries++}while(DB.groups().find(g=>g.code===c)&&tries<100);return c}
+
+function toast(msg,dur=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+function escHtml(s){
+  if(s==null)return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function scoreColor(s){if(s>=3.6)return '#10B981';if(s>=2.6)return '#2557B7';if(s>=1.1)return '#F59E0B';return '#EF4444';}
+function scoreBg(s){if(s>=3.6)return '#ecfdf5';if(s>=2.6)return '#EBF2FF';if(s>=1.1)return '#fffbeb';return '#fef2f2';}
+
+function getResultText(score){
+  const texts=DB.resultTexts();
+  return texts.find(t=>score>=t.min&&score<=t.max)||texts[0];
+}
+
+function calcScores(session, questionnaire){
+  const answers=session.answers||{};
+  const dimScores={};
+  let total=0,count=0;
+  for(const dim of questionnaire.dimensions){
+    let ds=0,dc=0;
+    for(const q of dim.questions){
+      const a=answers[q.id];
+      if(a!=null&&a.value!=null){ds+=a.value;dc++;}
+    }
+    dimScores[dim.id]=dc>0?Math.round((ds/dc)*100)/100:null;
+    if(dc>0){total+=ds;count+=dc;}
+  }
+  const overall=count>0?Math.round((total/count)*100)/100:null;
+  return{dimScores,overall};
+}
+
+function calcGroupScores(sessions, questionnaire){
+  const completed=sessions.filter(s=>s.status==='completed');
+  if(!completed.length)return null;
+  const allDimScores={};
+  const allOverall=[];
+  for(const s of completed){
+    const sc=calcScores(s,questionnaire);
+    allOverall.push(sc.overall);
+    for(const dim of questionnaire.dimensions){
+      if(!allDimScores[dim.id])allDimScores[dim.id]=[];
+      if(sc.dimScores[dim.id]!=null)allDimScores[dim.id].push(sc.dimScores[dim.id]);
+    }
+  }
+  const avgDim={};
+  for(const k in allDimScores){
+    const vals=allDimScores[k];
+    avgDim[k]=vals.length?Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*100)/100:null;
+  }
+  const validAll=allOverall.filter(v=>v!=null);
+  const avgOverall=validAll.length?Math.round((validAll.reduce((a,b)=>a+b,0)/validAll.length)*100)/100:null;
+  return{dimScores:avgDim,overall:avgOverall,count:completed.length};
+}
+
+function calcOthersScores(sessions, currentSessionId, questionnaire){
+  const others=sessions.filter(s=>s.status==='completed'&&s.id!==currentSessionId);
+  if(!others.length)return null;
+  return calcGroupScores(others,questionnaire);
+}
+
+// ══════════════════════════════════════════════
+//  ROUTER
+// ══════════════════════════════════════════════
+const Router={
+  current:null,
+  params:{},
+  go(route,params){
+    this.current=route;this.params=params||{};
+    this.render();
+  },
+  render(){
+    renderHeader();
+    const app=document.getElementById('app');
+    const u=DB.currentUser();
+    if(this.current==='landing')return renderLanding(app);
+    if(this.current==='login')return renderLogin(app);
+    if(this.current==='register')return renderRegister(app);
+    if(!u)return Router.go('landing');
+    if(this.current==='home')return renderHome(app);
+    if(this.current==='group-setup')return renderGroupSetup(app,this.params);
+    if(this.current==='questionnaire')return renderQuestionnaire(app,this.params);
+    if(this.current==='results')return renderResults(app,this.params);
+    if(this.current==='admin')return renderAdmin(app,this.params);
+    Router.go('home');
+  }
+};
+
+// ══════════════════════════════════════════════
+//  HEADER
+// ══════════════════════════════════════════════
+function renderHeader(){
+  const root=document.getElementById('header-root');
+  const u=DB.currentUser();
+  const hide=['landing','login','register'];
+  if(!u||hide.includes(Router.current)){root.innerHTML='';return;}
+  const initials=u.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  root.innerHTML=`
+  <div class="header">
+    <div class="logo" style="cursor:pointer" onclick="Router.go('home')">
+      <div class="logo-text">
+        <div class="gestao">Gestão de</div>
+        <div class="dono">Dono</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-chip">
+        <div class="avatar">${escHtml(initials)}</div>
+        <span>${escHtml(u.name.split(' ')[0])}</span>
+        ${u.role==='admin'?'<span class="badge badge-blue">Admin</span>':''}
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Sair</button>
+    </div>
+  </div>`;
+}
+
+function doLogout(){DB.logout();Router.go('landing');}
+
+// ══════════════════════════════════════════════
+//  LANDING
+// ══════════════════════════════════════════════
+function renderLanding(app){
+  const u=DB.currentUser();
+  if(u){Router.go('home');return;}
+  app.innerHTML=`
+  <div class="landing">
+    <div class="landing-hero">
+      <div class="landing-logo">
+        <div class="g1">Gestão de</div>
+        <div class="g2">Dono</div>
+      </div>
+      <h2>Sua empresa cresceu mais rápido do que sua maturidade de gestão?</h2>
+      <div class="landing-cards">
+        <div class="landing-card" onclick="showCodeEntryModal()">
+          <div class="icon">🔑</div>
+          <h3>Tenho um código de avaliação</h3>
+          <p>Recebi um código e quero participar da avaliação de uma empresa.</p>
+        </div>
+        <div class="landing-card" onclick="Pending.newGroup=true;Pending.code=null;Router.go('register')">
+          <div class="icon">🚀</div>
+          <h3>Iniciar nova avaliação</h3>
+          <p>Quero avaliar a maturidade de gestão da minha empresa agora.</p>
+        </div>
+      </div>
+      <div class="mt24">
+        <button class="btn btn-secondary btn-sm" onclick="Router.go('login')">Já tenho conta — Entrar</button>
+      </div>
+    </div>
+    <div class="landing-footer">
+      <p>Avaliação de Maturidade de Gestão · C1.SHIFT · Gestão de Dono</p>
+    </div>
+  </div>`;
+}
+
+function showCodeEntryModal(){
+  const bg=document.getElementById('modal-root');
+  bg.innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this){closeModal()}">
+    <div class="modal">
+      <div class="modal-title">Informe seu código de avaliação</div>
+      <p class="text-sm text-gray mb16">Digite os 6 caracteres do código que você recebeu.</p>
+      <div class="code-input-wrap" id="code-inputs"></div>
+      <div id="code-err" class="alert alert-error hidden">Código inválido ou inativo.</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPublicCode()">Continuar</button>
+      </div>
+    </div>
+  </div>`;
+  const wrap=document.getElementById('code-inputs');
+  wrap.innerHTML=Array.from({length:6},(_,i)=>`<input class="code-input" id="ci${i}" maxlength="1" autocomplete="off" />`).join('');
+  setupCodeInputs();
+}
+
+function setupCodeInputs(){
+  for(let i=0;i<6;i++){
+    const el=document.getElementById('ci'+i);
+    if(!el)continue;
+    el.addEventListener('input',e=>{
+      e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if(e.target.value&&i<5)document.getElementById('ci'+(i+1))?.focus();
+    });
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('ci'+(i-1))?.focus();
+    });
+    el.addEventListener('paste',e=>{
+      e.preventDefault();
+      const txt=(e.clipboardData.getData('text')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+      txt.split('').forEach((c,j)=>{const inp=document.getElementById('ci'+j);if(inp)inp.value=c;});
+      document.getElementById('ci'+(txt.length<5?txt.length:5))?.focus();
+    });
+  }
+}
+
+function getCodeValue(){return Array.from({length:6},(_,i)=>document.getElementById('ci'+i)?.value||'').join('');}
+
+function submitPublicCode(){
+  const code=getCodeValue();
+  if(code.length!==6){document.getElementById('code-err').classList.remove('hidden');return;}
+  const group=DB.groups().find(g=>g.code===code&&g.status==='active');
+  if(!group){document.getElementById('code-err').classList.remove('hidden');return;}
+  closeModal();
+  Pending.code=code;
+  Pending.newGroup=false;
+  Router.go('register');
+}
+
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+
+// ══════════════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════════════
+function renderLogin(app){
+  const code=Pending.code;
+  const group=code?DB.groups().find(g=>g.code===code):null;
+  const codeHint=group?`<div class="alert alert-info mb16">Entrando na avaliação de <strong>${escHtml(group.companyName)}</strong> (código <strong>${escHtml(code)}</strong>).</div>`:'';
+  app.innerHTML=`
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="g1">Gestão de</div>
+        <div class="g2">Dono</div>
+      </div>
+      <div class="auth-title">Entrar</div>
+      <div class="auth-sub">Acesse sua conta para continuar.</div>
+      ${codeHint}
+      <div id="login-err"></div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input id="l-email" class="form-input" type="email" placeholder="seu@email.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input id="l-pass" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
+      <div class="auth-switch">Não tem conta? <a href="#" onclick="Router.go('register');return false">Criar conta</a></div>
+      <div class="mt8 text-center"><a href="#" style="font-size:.72rem;color:var(--gray-light)" onclick="showAdminHint();return false">Acesso administrador</a></div>
+    </div>
+  </div>`;
+}
+
+function showAdminHint(){toast('Admin: admin@gestaododono.com.br / admin123',4000);}
+
+function doLogin(){
+  const email=document.getElementById('l-email').value.trim().toLowerCase();
+  const pass=document.getElementById('l-pass').value;
+  const err=document.getElementById('login-err');
+  const user=DB.users().find(u=>u.email===email&&u.password===pass);
+  if(!user){err.innerHTML='<div class="alert alert-error">E-mail ou senha incorretos.</div>';return;}
+  DB.login(user);
+  if(user.role==='admin'){Pending.clear();Router.go('admin');return;}
+  afterAuth(user);
+}
+
+// ══════════════════════════════════════════════
+//  REGISTER
+// ══════════════════════════════════════════════
+function renderRegister(app){
+  const code=Pending.code;
+  const isNewGroup=Pending.newGroup;
+  // Find group info for code hint
+  const group=code?DB.groups().find(g=>g.code===code):null;
+  const codeHint=code?`
+    <div class="alert alert-info mb16">
+      Você está participando da avaliação de <strong>${escHtml(group?.companyName||'empresa')}</strong>.<br>
+      Código: <strong style="font-family:monospace;font-size:1rem">${escHtml(code)}</strong>
+    </div>`:
+    isNewGroup?`<div class="alert alert-success mb16">Você irá criar uma nova avaliação e receberá um código para compartilhar.</div>`:'';
+  const title=isNewGroup?'Iniciar avaliação':'Criar conta';
+  const sub=code?'Preencha seus dados para participar desta avaliação.'
+    :isNewGroup?'Preencha seus dados para iniciar a avaliação da sua empresa.'
+    :'Preencha seus dados para acessar a plataforma.';
+  app.innerHTML=`
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="g1">Gestão de</div>
+        <div class="g2">Dono</div>
+      </div>
+      <div class="auth-title">${title}</div>
+      <div class="auth-sub">${sub}</div>
+      ${codeHint}
+      <div id="reg-err"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome <span>*</span></label>
+          <input id="r-name" class="form-input" type="text" placeholder="Seu nome" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sua empresa <span>*</span></label>
+          <input id="r-company" class="form-input" type="text" placeholder="Empresa onde você trabalha" autocomplete="organization" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail <span>*</span></label>
+        <input id="r-email" class="form-input" type="email" placeholder="seu@email.com" autocomplete="email" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">WhatsApp</label>
+          <input id="r-phone" class="form-input" type="tel" placeholder="(00) 00000-0000" autocomplete="tel" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cargo / Função</label>
+          <input id="r-position" class="form-input" type="text" placeholder="Ex: Sócio, Diretor..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Seu papel nesta avaliação <span>*</span></label>
+        <select id="r-profile" class="form-select">
+          <option value="">Selecione...</option>
+          <option>Sócio</option><option>Fundador</option><option>Sucessor</option>
+          <option>Familiar</option><option>Diretor</option><option>Gerente</option>
+          <option>Conselheiro</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha <span>*</span></label>
+        <input id="r-pass" class="form-input" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doRegister()">Criar conta e continuar</button>
+      <div class="auth-switch">Já tem conta? <a href="#" onclick="Router.go('login');return false">Entrar</a></div>
+    </div>
+  </div>`;
+}
+
+function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const company=document.getElementById('r-company').value.trim();
+  const email=document.getElementById('r-email').value.trim().toLowerCase();
+  const phone=document.getElementById('r-phone').value.trim();
+  const position=document.getElementById('r-position').value.trim();
+  const profile=document.getElementById('r-profile').value;
+  const pass=document.getElementById('r-pass').value;
+  const err=document.getElementById('reg-err');
+  if(!name||!company||!email||!profile||!pass){
+    err.innerHTML='<div class="alert alert-error">Preencha todos os campos obrigatórios.</div>';return;
+  }
+  if(pass.length<6){err.innerHTML='<div class="alert alert-error">A senha deve ter pelo menos 6 caracteres.</div>';return;}
+  const users=DB.users();
+  if(users.find(u=>u.email===email)){
+    err.innerHTML='<div class="alert alert-error">Este e-mail já está cadastrado. <a href="#" onclick="Router.go(\'login\')">Entrar →</a></div>';return;
+  }
+  const user={id:genId('u'),name,company,email,phone,position,profile,password:pass,
+    role:'respondent',createdAt:new Date().toISOString()};
+  users.push(user);DB.saveUsers(users);DB.login(user);
+  afterAuth(user);
+}
+
+function afterAuth(user){
+  const code=Pending.code;
+  const isNewGroup=Pending.newGroup;
+  if(code){
+    const group=DB.groups().find(g=>g.code===code&&g.status==='active');
+    if(group){Pending.clear();startSession(user,group);return;}
+    toast('Código inválido ou inativo.',3000);
+  }
+  if(isNewGroup){Pending.clear();Router.go('group-setup');return;}
+  Router.go('home');
+}
+
+// ══════════════════════════════════════════════
+//  GROUP SETUP
+// ══════════════════════════════════════════════
+function renderGroupSetup(app,params){
+  const u=DB.currentUser();
+  if(!u){Router.go('login');return;}
+  app.innerHTML=`
+  <div class="auth-wrap">
+    <div class="auth-box" style="max-width:520px">
+      <div class="auth-logo">
+        <div class="g1">Gestão de</div>
+        <div class="g2">Dono</div>
+      </div>
+      <div class="auth-title">Dados da avaliação</div>
+      <div class="auth-sub">Informe o nome da empresa ou grupo que será avaliado.</div>
+      <div class="form-group">
+        <label class="form-label">Nome da empresa / grupo <span>*</span></label>
+        <input id="gs-company" class="form-input" type="text" value="${escHtml(u.company)}" placeholder="Ex: Grupo Família Silva" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome do grupo de avaliação</label>
+        <input id="gs-group" class="form-input" type="text" placeholder="Ex: Avaliação 2025 · Família Silva" />
+        <div class="form-hint">Opcional. Ajuda a identificar esta avaliação no futuro.</div>
+      </div>
+      <div class="alert alert-info">
+        Um código único de 6 dígitos será gerado para esta empresa. Ele identifica a empresa avaliada — não você como respondente. Compartilhe apenas com pessoas que devem participar desta avaliação (sócios, líderes, familiares).
+      </div>
+      <button class="btn btn-primary btn-block mt12" onclick="doCreateGroup()">Gerar código e iniciar avaliação</button>
+    </div>
+  </div>`;
+}
+
+function doCreateGroup(){
+  const u=DB.currentUser();
+  const company=document.getElementById('gs-company').value.trim();
+  const groupName=document.getElementById('gs-group').value.trim();
+  if(!company){toast('Informe o nome da empresa.');return;}
+  const code=ensureUniqueCode();
+  const group={id:genId('g'),code,companyName:company,groupName:groupName||company,
+    createdBy:u.id,status:'active',createdAt:new Date().toISOString()};
+  const groups=DB.groups();groups.push(group);DB.saveGroups(groups);
+  startSession(u,group);
+}
+
+function startSession(user,group){
+  const q=DB.questionnaire();
+  const existing=DB.sessions().find(s=>s.userId===user.id&&s.groupId===group.id&&s.questionnaireId===q.id);
+  if(existing){
+    // Completed → results; in_progress/reopened → questionnaire
+    if(existing.status==='completed')Router.go('results',{sessionId:existing.id});
+    else Router.go('questionnaire',{sessionId:existing.id});
+    return;
+  }
+  const session={id:genId('s'),userId:user.id,groupId:group.id,questionnaireId:q.id,
+    status:'in_progress',answers:{},startedAt:new Date().toISOString(),createdAt:new Date().toISOString()};
+  const sessions=DB.sessions();sessions.push(session);DB.saveSessions(sessions);
+  Router.go('questionnaire',{sessionId:session.id});
+}
+
+// ══════════════════════════════════════════════
+//  HOME
+// ══════════════════════════════════════════════
+function renderHome(app){
+  const u=DB.currentUser();
+  const q=DB.questionnaire();
+  const mySessions=DB.sessions().filter(s=>s.userId===u.id);
+  const groups=DB.groups();
+
+  let sessionsHtml='';
+  if(!mySessions.length){
+    sessionsHtml=`
+    <div class="empty">
+      <div class="empty-icon">📋</div>
+      <div class="font-bold mb8">Nenhuma avaliação iniciada</div>
+      <div class="text-sm text-gray">Inicie uma nova avaliação ou use um código para participar.</div>
+    </div>`;
+  } else {
+    sessionsHtml=mySessions.map(s=>{
+      const g=groups.find(gr=>gr.id===s.groupId)||{companyName:'Grupo',code:'------'};
+      const scores=calcScores(s,q);
+      const pct=s.status==='completed'?100:calcProgress(s,q);
+      const statusLabel={not_started:'Não iniciado',in_progress:'Em andamento',
+        completed:'Concluído',reopened:'Reaberto'}[s.status]||s.status;
+      const statusClass={completed:'badge-green',in_progress:'badge-blue',not_started:'badge-gray',reopened:'badge-amber'}[s.status]||'badge-gray';
+      return `
+      <div class="card mb12" style="cursor:pointer" onclick="openSession('${s.id}')">
+        <div class="flex justify-between items-center mb8">
+          <div>
+            <div class="font-bold">${escHtml(g.companyName)}</div>
+            <div class="text-xs text-gray">${escHtml(g.groupName||g.companyName)}</div>
+          </div>
+          <span class="badge ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="code-display" style="padding:8px 14px;margin-bottom:6px">
+          <div class="code-val" style="font-size:1.2rem">${escHtml(g.code)}</div>
+          <div class="code-lbl">Código da empresa · clique para compartilhar</div>
+        </div>
+        <div class="text-xs text-gray mb8" style="text-align:center">Este código identifica <strong>${escHtml(g.companyName)}</strong>. Compartilhe apenas com pessoas desta avaliação.</div>
+        ${s.status==='completed'&&scores.overall!=null?`
+          <div class="flex gap12 items-center">
+            <div style="font-size:1.4rem;font-weight:900;color:${scoreColor(scores.overall)}">${scores.overall.toFixed(1)}</div>
+            <div class="text-sm text-gray">/ 4,0 · ${getResultText(scores.overall).classification}</div>
+          </div>
+        `:`
+          <div style="margin-bottom:6px;font-size:.8rem;color:var(--gray)">${pct}% concluído</div>
+          <div class="q-progress-bar"><div class="q-progress-fill" style="width:${pct}%"></div></div>
+        `}
+      </div>`;
+    }).join('');
+  }
+
+  app.innerHTML=`
+  <div class="page">
+    <div class="flex justify-between items-center mb16">
+      <div>
+        <div style="font-size:1.3rem;font-weight:700">Olá, ${escHtml(u.name.split(' ')[0])}!</div>
+        <div class="text-sm text-gray">Suas avaliações de maturidade de gestão</div>
+      </div>
+    </div>
+    <div class="flex gap8 mb24" style="flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="Router.go('group-setup',{newGroup:true})">+ Nova avaliação</button>
+      <button class="btn btn-secondary btn-sm" onclick="showJoinModal()">🔑 Usar código</button>
+      ${u.role==='admin'?'<button class="btn btn-secondary btn-sm" onclick="Router.go(\'admin\')">⚙️ Painel Admin</button>':''}
+    </div>
+    <div class="card-title mb12">Minhas avaliações</div>
+    ${sessionsHtml}
+  </div>`;
+
+  // Code display → share disclaimer
+  document.querySelectorAll('.code-display').forEach(el=>{
+    el.style.cursor='pointer';
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const code=el.querySelector('.code-val').textContent.trim();
+      showShareDisclaimer(code);
+    });
+  });
+}
+
+function openSession(sessionId){
+  const s=DB.sessions().find(s=>s.id===sessionId);
+  if(!s)return;
+  if(s.status==='completed')Router.go('results',{sessionId});
+  else Router.go('questionnaire',{sessionId});
+}
+
+function showJoinModal(){
+  const bg=document.getElementById('modal-root');
+  bg.innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this){closeModal()}">
+    <div class="modal">
+      <div class="modal-title">Usar código de avaliação</div>
+      <p class="text-sm text-gray mb16">Digite os 6 caracteres do código da avaliação.</p>
+      <div class="code-input-wrap" id="code-inputs"></div>
+      <div id="code-err" class="alert alert-error hidden">Código inválido ou inativo.</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="submitJoinCode()">Entrar na avaliação</button>
+      </div>
+    </div>
+  </div>`;
+  const wrap=document.getElementById('code-inputs');
+  wrap.innerHTML=Array.from({length:6},(_,i)=>`<input class="code-input" id="ci${i}" maxlength="1" autocomplete="off" />`).join('');
+  setupCodeInputs();
+}
+
+function submitJoinCode(){
+  const u=DB.currentUser();
+  const code=getCodeValue();
+  if(code.length!==6){document.getElementById('code-err').classList.remove('hidden');return;}
+  const group=DB.groups().find(g=>g.code===code&&g.status==='active');
+  if(!group){document.getElementById('code-err').classList.remove('hidden');return;}
+  const q=DB.questionnaire();
+  const existing=DB.sessions().find(s=>s.userId===u.id&&s.groupId===group.id&&s.questionnaireId===q.id);
+  closeModal();
+  if(existing&&existing.status==='completed'){
+    toast('Você já concluiu esta avaliação. Redirecionando para o resultado...',3000);
+    setTimeout(()=>Router.go('results',{sessionId:existing.id}),1200);
+    return;
+  }
+  startSession(u,group);
+}
+
+function calcProgress(session,questionnaire){
+  const total=questionnaire.dimensions.reduce((a,d)=>a+d.questions.length,0);
+  const done=Object.values(session.answers||{}).filter(a=>a.value!=null).length;
+  return Math.round((done/total)*100);
+}
+
+// ══════════════════════════════════════════════
+//  QUESTIONNAIRE
+// ══════════════════════════════════════════════
+let QState={dimIdx:0,session:null,questionnaire:null};
+
+function renderQuestionnaire(app,params){
+  const session=DB.sessions().find(s=>s.id===params.sessionId);
+  if(!session){Router.go('home');return;}
+  if(session.status==='completed'){Router.go('results',{sessionId:session.id});return;}
+  const q=DB.questionnaire();
+  QState={dimIdx:0,session,questionnaire:q};
+  // Find first unanswered dimension
+  for(let i=0;i<q.dimensions.length;i++){
+    const dim=q.dimensions[i];
+    const allDone=dim.questions.every(qn=>session.answers[qn.id]?.value!=null);
+    if(!allDone){QState.dimIdx=i;break;}
+    if(i===q.dimensions.length-1)QState.dimIdx=i;
+  }
+  renderDimension(app);
+}
+
+function renderDimension(app){
+  const{questionnaire:q,session,dimIdx}=QState;
+  const group=DB.groups().find(g=>g.id===session.groupId);
+  const totalQ=q.dimensions.reduce((a,d)=>a+d.questions.length,0);
+  const doneQ=Object.values(session.answers||{}).filter(a=>a.value!=null).length;
+  const pct=Math.round((doneQ/totalQ)*100);
+  const dim=q.dimensions[dimIdx];
+  const isLast=dimIdx===q.dimensions.length-1;
+
+  app.innerHTML=`
+  <div class="q-header">
+    <div class="q-meta">
+      <span class="q-dim-name">${escHtml(dim.name)}</span>
+      <span class="q-count" style="text-align:right">${dimIdx+1}/${q.dimensions.length} · ${pct}%</span>
+    </div>
+    ${group?`<div class="text-xs text-gray" style="margin-top:2px">Empresa: <strong>${escHtml(group.companyName)}</strong></div>`:''}
+    <div class="q-progress-bar"><div class="q-progress-fill" style="width:${pct}%"></div></div>
+  </div>
+  <div class="q-body">
+    <div class="q-dim-header">
+      <div class="q-dim-badge">Dimensão ${dimIdx+1}</div>
+      <div class="q-dim-title">${escHtml(dim.name)}</div>
+      <div class="q-dim-desc">${escHtml(dim.description)}</div>
+    </div>
+    <div class="alert alert-info mb16" style="font-size:.8rem">
+      <div><strong>Como avaliar:</strong> 0 = Não existe · 1 = Informal · 2 = Parcial · 3 = Frequente · 4 = Estruturado</div>
+    </div>
+    ${dim.questions.map((qn,qi)=>renderQuestionCard(qn,qi,session)).join('')}
+    <div class="q-nav">
+      <button class="btn btn-secondary btn-sm" onclick="navDim(-1)" ${dimIdx===0?'disabled':''}>← Anterior</button>
+      <button class="btn btn-primary btn-sm" onclick="navDim(1)" id="btn-next">
+        ${isLast?'Ver resultado →':'Próxima dimensão →'}
+      </button>
+    </div>
+  </div>`;
+
+  // Attach scale option listeners
+  dim.questions.forEach(qn=>{
+    SCALE.forEach(opt=>{
+      const el=document.getElementById(`opt-${qn.id}-${opt.value}`);
+      if(el)el.addEventListener('change',()=>saveAnswer(qn.id,'value',opt.value));
+    });
+    const commentToggle=document.getElementById(`ct-${qn.id}`);
+    if(commentToggle){
+      commentToggle.addEventListener('click',e=>{
+        e.preventDefault();
+        const area=document.getElementById(`ca-${qn.id}`);
+        area.classList.toggle('hidden');
+      });
+    }
+    const commentArea=document.getElementById(`ca-${qn.id}`);
+    if(commentArea){
+      commentArea.addEventListener('input',e=>saveAnswer(qn.id,'comment',e.target.value));
+    }
+  });
+}
+
+function renderQuestionCard(qn,qi,session){
+  const ans=session.answers[qn.id]||{};
+  const answered=ans.value!=null;
+  const commentVal=escHtml(ans.comment||'');
+  const opts=SCALE.map(opt=>{
+    const sel=ans.value===opt.value?'selected':'';
+    const chk=ans.value===opt.value?'checked':'';
+    return `
+    <label class="scale-opt ${sel}">
+      <input type="radio" name="q-${qn.id}" id="opt-${qn.id}-${opt.value}" value="${opt.value}" ${chk} />
+      <div class="scale-opt-label">
+        <div class="scale-opt-num">${opt.value}</div>
+        <div class="scale-opt-desc">${escHtml(opt.label)}</div>
+      </div>
+    </label>`;
+  }).join('');
+  return `
+  <div class="q-card ${answered?'answered':''}" id="qcard-${qn.id}">
+    <div class="q-text">${qi+1}. ${escHtml(qn.text)}</div>
+    <div class="scale-options">${opts}</div>
+    <a href="#" class="comment-toggle" id="ct-${qn.id}">+ Comentar sobre essa resposta</a>
+    <textarea class="comment-area hidden" id="ca-${qn.id}" placeholder="Descreva um exemplo ou situação...">${commentVal}</textarea>
+  </div>`;
+}
+
+function saveAnswer(qId,field,value){
+  const session=DB.sessions().find(s=>s.id===QState.session.id);
+  if(!session)return;
+  if(!session.answers[qId])session.answers[qId]={};
+  session.answers[qId][field]=value;
+  session.updatedAt=new Date().toISOString();
+  // Update in DB
+  const sessions=DB.sessions();
+  const idx=sessions.findIndex(s=>s.id===session.id);
+  if(idx>-1){sessions[idx]=session;DB.saveSessions(sessions);}
+  QState.session=session;
+  // Update card style
+  const card=document.getElementById('qcard-'+qId);
+  if(card&&field==='value'){card.classList.toggle('answered',value!=null);}
+  // Update scale option highlight
+  const dim=QState.questionnaire.dimensions[QState.dimIdx];
+  if(dim.questions.find(q=>q.id===qId)){
+    SCALE.forEach(opt=>{
+      const lbl=document.getElementById('opt-'+qId+'-'+opt.value)?.closest('.scale-opt');
+      if(lbl)lbl.classList.toggle('selected',opt.value===value);
+    });
+  }
+}
+
+function navDim(dir){
+  const{questionnaire:q,session,dimIdx}=QState;
+  const dim=q.dimensions[dimIdx];
+  const requiredNotDone=dim.questions.filter(qn=>qn.required&&session.answers[qn.id]?.value==null);
+  if(dir>0&&requiredNotDone.length){toast(`Responda todas as ${requiredNotDone.length} pergunta(s) desta dimensão.`);return;}
+  const newIdx=dimIdx+dir;
+  if(newIdx<0){Router.go('home');return;}
+  if(newIdx>=q.dimensions.length){
+    // Final: check all required answered
+    const allRequired=q.dimensions.every(d=>d.questions.every(qn=>!qn.required||session.answers[qn.id]?.value!=null));
+    if(!allRequired){toast('Complete todas as perguntas obrigatórias para finalizar.');return;}
+    confirmFinish();return;
+  }
+  QState.dimIdx=newIdx;
+  renderDimension(document.getElementById('app'));
+  window.scrollTo(0,0);
+}
+
+function confirmFinish(){
+  const bg=document.getElementById('modal-root');
+  bg.innerHTML=`
+  <div class="modal-bg">
+    <div class="modal">
+      <div class="modal-title">Concluir avaliação?</div>
+      <p class="text-sm text-gray" style="margin-bottom:16px;line-height:1.6">
+        Ao concluir, suas respostas serão salvas e você não poderá mais editá-las.<br>
+        Deseja finalizar a avaliação agora?
+      </p>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Revisar respostas</button>
+        <button class="btn btn-primary btn-sm" onclick="finishSession()">Sim, concluir</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function finishSession(){
+  const session=DB.sessions().find(s=>s.id===QState.session.id);
+  if(!session)return;
+  session.status='completed';
+  session.completedAt=new Date().toISOString();
+  const sessions=DB.sessions();
+  const idx=sessions.findIndex(s=>s.id===session.id);
+  if(idx>-1){sessions[idx]=session;DB.saveSessions(sessions);}
+  closeModal();
+  Router.go('results',{sessionId:session.id});
+}
+
+// ══════════════════════════════════════════════
+//  RESULTS
+// ══════════════════════════════════════════════
+let radarChart=null;
+function renderResults(app,params){
+  const session=DB.sessions().find(s=>s.id===params.sessionId);
+  if(!session){Router.go('home');return;}
+  const u=DB.currentUser();
+  const q=DB.questionnaire();
+  const group=DB.groups().find(g=>g.id===session.groupId)||{code:'------',companyName:'Grupo'};
+  const allGroupSessions=DB.sessions().filter(s=>s.groupId===group.id&&s.questionnaireId===q.id);
+  const myScores=calcScores(session,q);
+  const completedCount=allGroupSessions.filter(s=>s.status==='completed').length;
+  const hasMultiple=completedCount>1;
+  // Only calc group/others if multiple respondents
+  const groupScores=hasMultiple?calcGroupScores(allGroupSessions,q):null;
+  const othersScores=hasMultiple?calcOthersScores(allGroupSessions,session.id,q):null;
+  const rt=myScores.overall!=null?getResultText(myScores.overall):null;
+  const shareUrl=`${location.origin}${location.pathname}?codigo=${group.code}`;
+
+  const dimRows=q.dimensions.map(dim=>{
+    const myVal=myScores.dimScores[dim.id];
+    const grpVal=hasMultiple?groupScores?.dimScores[dim.id]:null;
+    const bar=myVal!=null?`<div class="score-bar"><div class="score-bar-fill" style="width:${(myVal/4)*100}%;background:${scoreColor(myVal)}"></div></div>`:'';
+    return `
+    <tr>
+      <td>${escHtml(dim.name)}</td>
+      <td class="text-center">${myVal!=null?`<strong style="color:${scoreColor(myVal)}">${myVal.toFixed(1)}</strong>`:'—'}</td>
+      <td class="text-center">${grpVal!=null?grpVal.toFixed(1):'—'}</td>
+      <td style="min-width:90px">${bar}</td>
+    </tr>`;
+  }).join('');
+
+  const radarNote=!hasMultiple?`
+    <div class="alert alert-info mt12" style="font-size:.8rem">
+      Apenas a sua nota está sendo exibida. Quando outros respondentes da mesma empresa concluírem a avaliação, o radar passará a mostrar também a média dos demais e a média geral do grupo.
+    </div>`:'';
+
+  const legendHtml=hasMultiple?`
+    <div class="radar-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota</div>
+      ${othersScores?'<div class="legend-item"><div class="legend-dot" style="background:#10B981"></div>Média dos demais</div>':''}
+      <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>Média geral do grupo</div>
+    </div>`:`<div class="radar-legend"><div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota individual</div></div>`;
+
+  app.innerHTML=`
+  <div class="result-hero">
+    <div class="text-xs text-gray mb8">${escHtml(group.companyName)}</div>
+    ${myScores.overall!=null?`
+    <div class="result-score-big" style="color:${scoreColor(myScores.overall)}">${myScores.overall.toFixed(1)}</div>
+    <div class="result-score-max">/ 4,0 — minha avaliação</div>
+    <div class="result-classification ${rt?.badge||''}" style="background:${scoreBg(myScores.overall)};color:${scoreColor(myScores.overall)}">${rt?.classification||''}</div>
+    `:'<div class="text-gray">Cálculo não disponível</div>'}
+    ${hasMultiple?`<div class="respondents-note mt8">${completedCount} respondentes concluíram neste grupo</div>`:'<div class="respondents-note mt8">Você é o único respondente até agora</div>'}
+  </div>
+  <div class="page">
+    ${rt?`
+    <div class="card mb16">
+      <div class="card-title">Leitura do resultado</div>
+      <p class="text-sm" style="line-height:1.7;color:var(--gray);margin-top:8px">${escHtml(rt.text)}</p>
+      <div class="mt12 alert alert-info" style="font-size:.82rem"><strong>Próximo passo sugerido:</strong> ${escHtml(rt.next)}</div>
+      <div class="privacy-note mt12">
+        <strong>Privacidade:</strong> Você vê apenas sua nota individual e, quando houver mais respondentes, as médias agregadas do grupo. Nomes, e-mails, cargos e respostas individuais de outros respondentes nunca são exibidos para respondentes comuns.
+      </div>
+    </div>`:''}
+    <div class="radar-wrap mb16">
+      <div class="radar-title">Radar por dimensão ${hasMultiple?`<span class="text-xs text-gray">(${completedCount} respondentes)</span>`:''}</div>
+      <canvas id="radar-canvas" style="max-height:360px"></canvas>
+      ${legendHtml}
+      ${radarNote}
+    </div>
+    <div class="card mb16">
+      <div class="card-title mb12">Detalhamento por dimensão</div>
+      <div style="overflow-x:auto">
+        <table class="dim-table">
+          <thead><tr>
+            <th>Dimensão</th>
+            <th class="text-center">Minha nota</th>
+            <th class="text-center">${hasMultiple?'Média do grupo':'—'}</th>
+            <th style="min-width:90px">Barra</th>
+          </tr></thead>
+          <tbody>${dimRows}</tbody>
+        </table>
+      </div>
+      ${hasMultiple?`<div class="privacy-note">Médias calculadas sobre ${completedCount} respostas concluídas. Respostas individuais de outros respondentes não são acessíveis por aqui.</div>`:''}
+    </div>
+    <div class="card mb16">
+      <div class="card-title mb8">Convidar outros respondentes</div>
+      <div class="text-sm text-gray mb12">
+        O código abaixo identifica a empresa <strong>${escHtml(group.companyName)}</strong> nesta avaliação. Compartilhe com sócios, líderes e familiares que devem participar. Cada pessoa responde individualmente e o radar consolidado fica mais rico com mais respondentes.
+      </div>
+      <button class="btn btn-primary btn-sm btn-block" onclick="showShareDisclaimer('${escHtml(group.code)}','${escHtml(shareUrl)}')">
+        🔗 Compartilhar código / link de convite
+      </button>
+    </div>
+    <div class="flex gap8 mt16" style="flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="Router.go('home')">← Início</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportMyCSV('${session.id}')">📥 Exportar meu CSV</button>
+      ${u.role==='admin'?`<button class="btn btn-secondary btn-sm" onclick="Router.go('admin',{tab:'results',groupId:'${group.id}'})">📊 Painel consolidado</button>`:''}
+    </div>
+  </div>`;
+
+  buildRadar(q,myScores,othersScores,hasMultiple?groupScores:null);
+}
+
+function buildRadar(q,myScores,othersScores,groupScores){
+  const canvas=document.getElementById('radar-canvas');
+  if(!canvas)return;
+  if(radarChart){radarChart.destroy();radarChart=null;}
+  const labels=q.dimensions.map(d=>d.name);
+  const myData=q.dimensions.map(d=>myScores.dimScores[d.id]??0);
+  const datasets=[{
+    label:'Minha nota',data:myData,
+    borderColor:'#2557B7',backgroundColor:'rgba(37,87,183,.15)',
+    borderWidth:2,pointBackgroundColor:'#2557B7',pointRadius:4
+  }];
+  if(othersScores){
+    datasets.push({
+      label:'Média dos demais',data:q.dimensions.map(d=>othersScores.dimScores[d.id]??0),
+      borderColor:'#10B981',backgroundColor:'rgba(16,185,129,.1)',
+      borderWidth:2,pointBackgroundColor:'#10B981',pointRadius:4,borderDash:[5,3]
+    });
+  }
+  if(groupScores&&!othersScores){
+    datasets.push({
+      label:'Média do grupo',data:q.dimensions.map(d=>groupScores.dimScores[d.id]??0),
+      borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.1)',
+      borderWidth:2,pointBackgroundColor:'#F59E0B',pointRadius:4,borderDash:[5,3]
+    });
+  } else if(groupScores&&othersScores){
+    datasets.push({
+      label:'Média do grupo',data:q.dimensions.map(d=>groupScores.dimScores[d.id]??0),
+      borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,.05)',
+      borderWidth:1.5,pointBackgroundColor:'#F59E0B',pointRadius:3,borderDash:[3,3]
+    });
+  }
+  radarChart=new Chart(canvas,{
+    type:'radar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      scales:{r:{min:0,max:4,ticks:{stepSize:1,font:{size:10}},
+        pointLabels:{font:{size:11},color:'#374151'}}},
+      plugins:{legend:{display:false}},
+      elements:{line:{tension:0.1}}
+    }
+  });
+}
+
+function copyCode(code){navigator.clipboard?.writeText(code).then(()=>toast('Código copiado!'));}
+function copyInviteLink(url){navigator.clipboard?.writeText(url).then(()=>toast('Link copiado!'));}
+
+function showShareDisclaimer(code,url){
+  const shareUrl=url||`${location.origin}${location.pathname}?codigo=${code}`;
+  document.getElementById('modal-root').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this){closeModal()}">
+    <div class="modal">
+      <div class="modal-title">Antes de compartilhar</div>
+      <div class="share-disclaimer">
+        <strong>Atenção:</strong> Quem tiver este código poderá participar da avaliação desta empresa e visualizar o resultado consolidado do grupo (médias agregadas). Não será possível ver respostas individuais de outros respondentes, mas a pessoa terá acesso à visão geral da empresa.<br><br>
+        Compartilhe apenas com pessoas que devem participar desta avaliação.
+      </div>
+      <div class="code-display mb16" style="cursor:default">
+        <div class="code-val">${escHtml(code)}</div>
+        <div class="code-lbl">Código da empresa nesta avaliação</div>
+      </div>
+      <div class="modal-footer" style="flex-direction:column;gap:8px">
+        <button class="btn btn-primary btn-block" onclick="doCopyCode('${escHtml(code)}')">📋 Copiar código</button>
+        <button class="btn btn-secondary btn-block" onclick="doCopyLink('${escHtml(shareUrl)}')">🔗 Copiar link de convite</button>
+        <button class="btn btn-secondary btn-block" style="color:var(--gray)" onclick="closeModal()">Não compartilhar agora</button>
+      </div>
+    </div>
+  </div>`;
+}
+function doCopyCode(code){copyCode(code);closeModal();}
+function doCopyLink(url){copyInviteLink(url);closeModal();}
+
+function exportMyCSV(sessionId){
+  const session=DB.sessions().find(s=>s.id===sessionId);if(!session)return;
+  const u=DB.users().find(u=>u.id===session.userId)||{name:'—'};
+  const q=DB.questionnaire();
+  const scores=calcScores(session,q);
+  let rows=[['Empresa','Respondente','Perfil','Dimensão','Pergunta','Nota','Comentário']];
+  const group=DB.groups().find(g=>g.id===session.groupId)||{companyName:'—'};
+  q.dimensions.forEach(dim=>{
+    dim.questions.forEach(qn=>{
+      const ans=session.answers[qn.id]||{};
+      rows.push([group.companyName,u.name,u.profile||'—',dim.name,qn.text,ans.value??'',ans.comment||'']);
+    });
+  });
+  downloadCSV(rows,`avaliacao_${group.code}_${u.name.replace(/\s+/g,'_')}.csv`);
+}
+
+function downloadCSV(rows,filename){
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download=filename;a.click();
+}
+
+// ══════════════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════════════
+let AdminState={tab:'overview',groupId:null};
+
+function renderAdmin(app,params){
+  const u=DB.currentUser();
+  if(u?.role!=='admin'){Router.go('home');return;}
+  if(params?.tab)AdminState.tab=params.tab;
+  if(params?.groupId)AdminState.groupId=params.groupId;
+  const tabs=[
+    {id:'overview',label:'Visão Geral'},
+    {id:'groups',label:'Grupos / Códigos'},
+    {id:'respondents',label:'Respondentes'},
+    {id:'results',label:'Resultados'},
+    {id:'questionnaire',label:'Questionário'},
+  ];
+  app.innerHTML=`
+  <div class="page-wide">
+    <div class="flex justify-between items-center mb16">
+      <div>
+        <div style="font-size:1.2rem;font-weight:700">Painel Administrativo</div>
+        <div class="text-xs text-gray">Gestão de Dono · C1.SHIFT</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="Router.go('home')">← Início</button>
+    </div>
+    <div class="admin-tabs">
+      ${tabs.map(t=>`<button class="admin-tab ${AdminState.tab===t.id?'active':''}" onclick="adminTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+    <div id="admin-content"></div>
+  </div>`;
+  renderAdminContent();
+}
+
+function adminTab(tab){AdminState.tab=tab;renderAdminContent();}
+
+function renderAdminContent(){
+  const el=document.getElementById('admin-content');
+  if(!el)return;
+  if(AdminState.tab==='overview')adminOverview(el);
+  else if(AdminState.tab==='groups')adminGroups(el);
+  else if(AdminState.tab==='respondents')adminRespondents(el);
+  else if(AdminState.tab==='results')adminResults(el);
+  else if(AdminState.tab==='questionnaire')adminQuestionnaire(el);
+}
+
+function adminOverview(el){
+  const groups=DB.groups();const sessions=DB.sessions();const users=DB.users().filter(u=>u.role!=='admin');
+  const completed=sessions.filter(s=>s.status==='completed');
+  const inProgress=sessions.filter(s=>s.status==='in_progress');
+  const recent=sessions.slice(-5).reverse();
+  const q=DB.questionnaire();
+  el.innerHTML=`
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-val">${groups.length}</div><div class="stat-lbl">Grupos / Códigos</div></div>
+    <div class="stat-card"><div class="stat-val">${users.length}</div><div class="stat-lbl">Respondentes</div></div>
+    <div class="stat-card"><div class="stat-val">${completed.length}</div><div class="stat-lbl">Avaliações concluídas</div></div>
+    <div class="stat-card"><div class="stat-val">${inProgress.length}</div><div class="stat-lbl">Em andamento</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title mb12">Últimas respostas</div>
+    ${recent.length?`
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Respondente</th><th>Empresa</th><th>Status</th><th>Data</th></tr></thead>
+        <tbody>${recent.map(s=>{
+          const u2=DB.users().find(u=>u.id===s.userId)||{name:'—'};
+          const g=DB.groups().find(g=>g.id===s.groupId)||{companyName:'—'};
+          const scores=calcScores(s,q);
+          return `<tr>
+            <td>${escHtml(u2.name)}</td>
+            <td>${escHtml(g.companyName)} <span class="badge badge-gray">${escHtml(g.code)}</span></td>
+            <td><span class="badge ${s.status==='completed'?'badge-green':'badge-blue'}">${s.status==='completed'?'Concluído':'Em andamento'}</span></td>
+            <td class="text-xs text-gray">${s.completedAt?new Date(s.completedAt).toLocaleDateString('pt-BR'):new Date(s.createdAt).toLocaleDateString('pt-BR')}</td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table>
+    </div>`:'<div class="empty"><div class="text-sm">Nenhuma resposta ainda.</div></div>'}
+  </div>`;
+}
+
+function adminGroups(el){
+  const groups=DB.groups();
+  const sessions=DB.sessions();
+  el.innerHTML=`
+  <div class="flex gap8 mb16">
+    <button class="btn btn-primary btn-sm" onclick="showCreateGroupModal()">+ Criar grupo</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportGroupsCSV()">📥 Exportar CSV</button>
+  </div>
+  ${groups.length?`
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Código</th><th>Empresa</th><th>Em andamento</th><th>Concluídos</th><th>Total</th><th>Status</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody>${groups.map(g=>{
+        const gSessions=sessions.filter(s=>s.groupId===g.id);
+        const inProg=gSessions.filter(s=>s.status==='in_progress').length;
+        const done=gSessions.filter(s=>s.status==='completed').length;
+        const statusClass={active:'badge-green',paused:'badge-amber',closed:'badge-red',draft:'badge-gray'}[g.status]||'badge-gray';
+        const statusLabel={active:'Ativo',paused:'Pausado',closed:'Encerrado',draft:'Rascunho'}[g.status]||g.status;
+        const shareUrl=`${location.origin}${location.pathname}?codigo=${g.code}`;
+        return `<tr>
+          <td><code style="font-family:monospace;font-weight:700;color:var(--blue);letter-spacing:.1em">${escHtml(g.code)}</code></td>
+          <td><strong>${escHtml(g.companyName)}</strong><div class="text-xs text-gray">${escHtml(g.groupName&&g.groupName!==g.companyName?g.groupName:'')}</div></td>
+          <td class="text-center">${inProg?`<span class="badge badge-blue">${inProg}</span>`:'—'}</td>
+          <td class="text-center">${done?`<span class="badge badge-green">${done}</span>`:'—'}</td>
+          <td class="text-center">${gSessions.length}</td>
+          <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+          <td class="text-xs text-gray">${new Date(g.createdAt).toLocaleDateString('pt-BR')}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" onclick="showShareDisclaimer('${escHtml(g.code)}','${escHtml(shareUrl)}')" title="Copiar link de convite">🔗</button>
+            <button class="btn btn-secondary btn-sm" onclick="adminViewGroup('${g.id}')">Resultados</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleGroupStatus('${g.id}')">${g.status==='active'?'Pausar':'Ativar'}</button>
+          </td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+  </div>`:'<div class="empty"><div class="empty-icon">🏢</div><div>Nenhum grupo criado. Use o botão acima para criar o primeiro grupo de avaliação.</div></div>'}`;
+}
+
+function showCreateGroupModal(){
+  const bg=document.getElementById('modal-root');
+  bg.innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this){closeModal()}">
+    <div class="modal">
+      <div class="modal-title">Criar grupo de avaliação</div>
+      <div class="form-group"><label class="form-label">Empresa <span>*</span></label><input id="mg-company" class="form-input" /></div>
+      <div class="form-group"><label class="form-label">Nome do grupo</label><input id="mg-group" class="form-input" /></div>
+      <div class="form-group"><label class="form-label">Código (deixe em branco para gerar automaticamente)</label>
+        <input id="mg-code" class="form-input" maxlength="6" placeholder="Ex: A7F3K9" style="text-transform:uppercase" /></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="doCreateGroupAdmin()">Criar grupo</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function doCreateGroupAdmin(){
+  const company=document.getElementById('mg-company').value.trim();
+  const groupName=document.getElementById('mg-group').value.trim();
+  let code=(document.getElementById('mg-code').value.trim().toUpperCase()||ensureUniqueCode()).slice(0,6);
+  if(!company){toast('Informe o nome da empresa.');return;}
+  if(code.length!==6)code=ensureUniqueCode();
+  if(DB.groups().find(g=>g.code===code)){toast('Código já existe. Deixe em branco para gerar automaticamente.');return;}
+  const u=DB.currentUser();
+  const group={id:genId('g'),code,companyName:company,groupName:groupName||company,
+    createdBy:u.id,status:'active',createdAt:new Date().toISOString()};
+  const groups=DB.groups();groups.push(group);DB.saveGroups(groups);
+  closeModal();toast('Grupo criado! Código: '+code,4000);renderAdminContent();
+}
+
+function toggleGroupStatus(groupId){
+  const groups=DB.groups();const g=groups.find(g=>g.id===groupId);
+  if(!g)return;
+  g.status=g.status==='active'?'paused':'active';
+  DB.saveGroups(groups);renderAdminContent();
+}
+
+function adminViewGroup(groupId){AdminState.groupId=groupId;adminTab('results');}
+
+function adminRespondents(el){
+  const users=DB.users().filter(u=>u.role!=='admin');
+  const sessions=DB.sessions();
+  const groups=DB.groups();
+  el.innerHTML=`
+  <div class="flex gap8 mb16">
+    <button class="btn btn-secondary btn-sm" onclick="exportRespondentsCSV()">📥 Exportar CSV</button>
+  </div>
+  ${users.length?`
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Empresa</th><th>Perfil</th><th>Avaliações</th><th>Cadastro</th></tr></thead>
+      <tbody>${users.map(u=>{
+        const uSessions=sessions.filter(s=>s.userId===u.id);
+        const done=uSessions.filter(s=>s.status==='completed').length;
+        return `<tr>
+          <td><strong>${escHtml(u.name)}</strong></td>
+          <td class="text-sm">${escHtml(u.email)}</td>
+          <td class="text-sm">${escHtml(u.company)}</td>
+          <td><span class="badge badge-gray">${escHtml(u.profile||u.position||'—')}</span></td>
+          <td>${done} concluída(s) / ${uSessions.length} total</td>
+          <td class="text-xs text-gray">${new Date(u.createdAt).toLocaleDateString('pt-BR')}</td>
+        </tr>`;}).join('')}
+      </tbody>
+    </table>
+  </div>`:'<div class="empty"><div class="empty-icon">👥</div><div>Nenhum respondente cadastrado.</div></div>'}`;
+}
+
+function adminResults(el){
+  const groups=DB.groups();
+  const sessions=DB.sessions();
+  const q=DB.questionnaire();
+  const users=DB.users();
+  // Filter by group if set
+  let targetGroup=AdminState.groupId?groups.find(g=>g.id===AdminState.groupId):null;
+  const groupFilter=`
+  <div class="form-group mb16">
+    <label class="form-label">Filtrar por grupo</label>
+    <select class="form-select" onchange="AdminState.groupId=this.value;renderAdminContent()">
+      <option value="">Todos os grupos</option>
+      ${groups.map(g=>`<option value="${g.id}" ${AdminState.groupId===g.id?'selected':''}>${escHtml(g.companyName)} (${escHtml(g.code)})</option>`).join('')}
+    </select>
+  </div>`;
+  const filteredGroups=targetGroup?[targetGroup]:groups;
+  if(!filteredGroups.length){el.innerHTML=groupFilter+'<div class="empty">Nenhum grupo.</div>';return;}
+
+  let html=groupFilter;
+  filteredGroups.forEach(g=>{
+    const gSessions=sessions.filter(s=>s.groupId===g.id&&s.questionnaireId===q.id);
+    const completed=gSessions.filter(s=>s.status==='completed');
+    const groupScores=calcGroupScores(gSessions,q);
+    html+=`
+    <div class="card mb16">
+      <div class="flex justify-between items-center mb12">
+        <div>
+          <div class="font-bold">${escHtml(g.companyName)}</div>
+          <div class="text-xs text-gray">Código: <code style="font-family:monospace;font-weight:700">${escHtml(g.code)}</code> · ${completed.length} concluído(s) / ${gSessions.length} total</div>
+        </div>
+        ${groupScores?`<div style="font-size:1.6rem;font-weight:900;color:${scoreColor(groupScores.overall)}">${groupScores.overall.toFixed(1)}</div>`:''}
+      </div>
+      ${groupScores?`
+      <canvas id="admin-radar-${g.id}" style="max-height:280px;margin-bottom:12px"></canvas>
+      <div style="overflow-x:auto">
+        <table class="dim-table">
+          <thead><tr><th>Dimensão</th>${completed.map(s=>{const u2=users.find(u=>u.id===s.userId);return`<th class="text-center">${escHtml(u2?.name?.split(' ')[0]||'—')}</th>`}).join('')}<th class="text-center">Média</th></tr></thead>
+          <tbody>${q.dimensions.map(dim=>{
+            const cells=completed.map(s=>{const sc=calcScores(s,q);const v=sc.dimScores[dim.id];return`<td class="text-center">${v!=null?v.toFixed(1):'—'}</td>`;}).join('');
+            const avg=groupScores.dimScores[dim.id];
+            return`<tr><td>${escHtml(dim.name)}</td>${cells}<td class="text-center"><strong style="color:${avg!=null?scoreColor(avg):'inherit'}">${avg!=null?avg.toFixed(1):'—'}</strong></td></tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt12 flex gap8 flex-wrap">
+        <button class="btn btn-secondary btn-sm" onclick="exportGroupCSV('${g.id}')">📥 Exportar CSV</button>
+      </div>
+      `:`<div class="text-sm text-gray">Nenhuma avaliação concluída neste grupo.</div>`}
+    </div>`;
+  });
+  el.innerHTML=html;
+  // Build mini radars
+  filteredGroups.forEach(g=>{
+    const gSessions=sessions.filter(s=>s.groupId===g.id&&s.questionnaireId===q.id);
+    const gs=calcGroupScores(gSessions,q);
+    if(!gs)return;
+    const canvas=document.getElementById('admin-radar-'+g.id);
+    if(!canvas)return;
+    new Chart(canvas,{
+      type:'radar',
+      data:{
+        labels:q.dimensions.map(d=>d.name),
+        datasets:[{label:'Média',data:q.dimensions.map(d=>gs.dimScores[d.id]??0),
+          borderColor:'#2557B7',backgroundColor:'rgba(37,87,183,.15)',borderWidth:2,
+          pointBackgroundColor:'#2557B7',pointRadius:4}]
+      },
+      options:{responsive:true,scales:{r:{min:0,max:4,ticks:{stepSize:1,font:{size:9}},
+        pointLabels:{font:{size:10},color:'#374151'}}},plugins:{legend:{display:false}}}
+    });
+  });
+}
+
+function adminQuestionnaire(el){
+  const q=DB.questionnaire();
+  el.innerHTML=`
+  <div class="card mb16">
+    <div class="flex justify-between items-center mb12">
+      <div>
+        <div class="card-title">${escHtml(q.title)}</div>
+        <div class="text-xs text-gray">${q.dimensions.length} dimensões · ${q.dimensions.reduce((a,d)=>a+d.questions.length,0)} perguntas · Versão ${escHtml(q.version)}</div>
+      </div>
+      <span class="badge ${q.status==='active'?'badge-green':'badge-gray'}">${q.status==='active'?'Ativo':'Inativo'}</span>
+    </div>
+    <div class="alert alert-info mb12" style="font-size:.82rem">
+      Escala de resposta: 0 = Não existe · 1 = Informal · 2 = Parcial · 3 = Frequente · 4 = Estruturado
+    </div>
+    ${q.dimensions.map((dim,di)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div class="flex justify-between items-center mb8">
+        <div>
+          <strong>Dimensão ${di+1}: ${escHtml(dim.name)}</strong>
+          <div class="text-xs text-gray">${escHtml(dim.description)}</div>
+        </div>
+        <span class="badge badge-gray">${dim.questions.length} perguntas</span>
+      </div>
+      <ol style="padding-left:18px;font-size:.85rem;color:var(--gray)">
+        ${dim.questions.map(qn=>`<li style="margin-bottom:4px;line-height:1.4">${escHtml(qn.text)}</li>`).join('')}
+      </ol>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="card-title mb8">Faixas de resultado</div>
+    ${DB.resultTexts().map(t=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+      <div class="flex justify-between items-center mb4">
+        <strong>${escHtml(t.classification)}</strong>
+        <span class="badge ${t.badge}">${t.min} – ${t.max}</span>
+      </div>
+      <div class="text-sm text-gray">${escHtml(t.text)}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function exportGroupCSV(groupId){
+  const group=DB.groups().find(g=>g.id===groupId);if(!group)return;
+  const q=DB.questionnaire();
+  const sessions=DB.sessions().filter(s=>s.groupId===groupId&&s.status==='completed');
+  const users=DB.users();
+  let rows=[['Empresa','Código','Respondente','Perfil','Dimensão','Pergunta','Nota','Comentário']];
+  sessions.forEach(s=>{
+    const u2=users.find(u=>u.id===s.userId)||{name:'—',profile:'—'};
+    q.dimensions.forEach(dim=>{
+      dim.questions.forEach(qn=>{
+        const ans=s.answers[qn.id]||{};
+        rows.push([group.companyName,group.code,u2.name,u2.profile||'—',dim.name,qn.text,ans.value??'',ans.comment||'']);
+      });
+    });
+  });
+  downloadCSV(rows,`grupo_${group.code}_respostas.csv`);
+}
+
+function exportGroupsCSV(){
+  const groups=DB.groups();
+  const sessions=DB.sessions();
+  let rows=[['Código','Empresa','Grupo','Status','Respondentes','Concluídos','Criado em']];
+  groups.forEach(g=>{
+    const gs=sessions.filter(s=>s.groupId===g.id);
+    rows.push([g.code,g.companyName,g.groupName||'',g.status,gs.length,gs.filter(s=>s.status==='completed').length,new Date(g.createdAt).toLocaleDateString('pt-BR')]);
+  });
+  downloadCSV(rows,'grupos_avaliacao.csv');
+}
+
+function exportRespondentsCSV(){
+  const users=DB.users().filter(u=>u.role!=='admin');
+  const sessions=DB.sessions();
+  const q=DB.questionnaire();
+  let rows=[['Nome','Email','WhatsApp','Empresa','Cargo','Perfil','Avaliações','Concluídas','Cadastro']];
+  users.forEach(u=>{
+    const uS=sessions.filter(s=>s.userId===u.id);
+    rows.push([u.name,u.email,u.phone||'',u.company,u.position||'',u.profile||'',uS.length,uS.filter(s=>s.status==='completed').length,new Date(u.createdAt).toLocaleDateString('pt-BR')]);
+  });
+  downloadCSV(rows,'respondentes.csv');
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+function init(){
+  ensureAdmin();
+  // Handle ?codigo= in URL — set Pending then route
+  const urlParams=new URLSearchParams(location.search);
+  const rawCode=(urlParams.get('codigo')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(rawCode.length===6){
+    const group=DB.groups().find(g=>g.code===rawCode&&g.status==='active');
+    if(group){
+      const u=DB.currentUser();
+      if(u){startSession(u,group);return;}
+      // Not logged in — store code and route to register
+      Pending.code=rawCode;
+      Pending.newGroup=false;
+      Router.go('register');
+      return;
+    }
+  }
+  const u=DB.currentUser();
+  if(u){
+    if(u.role==='admin')Router.go('admin');
+    else Router.go('home');
+  } else {
+    Router.go('landing');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
