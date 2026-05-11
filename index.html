@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestão de Dono — Avaliação de Maturidade</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -244,11 +244,38 @@ input,select,textarea{font-family:inherit;font-size:inherit}
 .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 
 @media(max-width:480px){
-  .auth-box{padding:24px 20px}
-  .q-body{padding:16px 12px}
-  .page{padding:16px 12px}
-  .landing-hero{padding:40px 16px 24px}
+  .auth-box{padding:24px 16px}
+  .q-body{padding:14px 10px}
+  .page{padding:14px 12px}
+  .page-wide{padding:14px 12px}
+  .landing-hero{padding:36px 14px 20px}
+  .landing-logo .g1{font-size:1.7rem}
+  .landing-logo .g2{font-size:2.2rem}
+  .landing-hero h2{font-size:1.1rem}
+  .q-dim-title{font-size:1.1rem}
+  .modal{padding:20px 16px}
+  .result-hero{padding:22px 14px 16px}
+  .result-score-big{font-size:2.8rem}
+  .code-input{width:40px;height:46px;font-size:1.2rem}
+  .admin-tabs{gap:0}
+  .admin-tab{padding:8px 12px;font-size:.78rem}
 }
+/* Touch targets */
+.scale-opt{min-height:48px;padding:12px 14px}
+@media(max-width:600px){
+  .q-nav{flex-direction:column-reverse;gap:10px}
+  .q-nav .btn{width:100%;justify-content:center}
+  .radar-wrap canvas{max-height:260px!important}
+  .form-row{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:1fr 1fr}
+}
+/* Privacy disclaimer block */
+.privacy-note{background:#f9fafb;border:1px solid var(--border);border-radius:8px;
+  padding:12px 14px;font-size:.78rem;color:var(--gray);line-height:1.6;margin-top:10px}
+.privacy-note strong{color:var(--black)}
+/* Share disclaimer */
+.share-disclaimer{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;
+  padding:14px;font-size:.82rem;color:#92400e;line-height:1.6;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -407,6 +434,11 @@ const DEFAULT_RESULT_TEXTS = [
 ];
 
 // ══════════════════════════════════════════════
+//  PENDING STATE  (carries code across page transitions)
+// ══════════════════════════════════════════════
+const Pending = {code: null, newGroup: false, clear(){this.code=null;this.newGroup=false;}};
+
+// ══════════════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════════════
 function genId(prefix){return (prefix||'id')+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)}
@@ -494,10 +526,9 @@ const Router={
     const u=DB.currentUser();
     if(this.current==='landing')return renderLanding(app);
     if(this.current==='login')return renderLogin(app);
-    if(this.current==='register')return renderRegister(app,this.params);
+    if(this.current==='register')return renderRegister(app);
     if(!u)return Router.go('landing');
     if(this.current==='home')return renderHome(app);
-    if(this.current==='code-entry')return renderCodeEntry(app);
     if(this.current==='group-setup')return renderGroupSetup(app,this.params);
     if(this.current==='questionnaire')return renderQuestionnaire(app,this.params);
     if(this.current==='results')return renderResults(app,this.params);
@@ -551,12 +582,12 @@ function renderLanding(app){
       </div>
       <h2>Sua empresa cresceu mais rápido do que sua maturidade de gestão?</h2>
       <div class="landing-cards">
-        <div class="landing-card" onclick="Router.go('code-entry-public')">
+        <div class="landing-card" onclick="showCodeEntryModal()">
           <div class="icon">🔑</div>
           <h3>Tenho um código de avaliação</h3>
-          <p>Já recebi um código e quero participar de uma avaliação em andamento.</p>
+          <p>Recebi um código e quero participar da avaliação de uma empresa.</p>
         </div>
-        <div class="landing-card" onclick="Router.go('register',{newGroup:true})">
+        <div class="landing-card" onclick="Pending.newGroup=true;Pending.code=null;Router.go('register')">
           <div class="icon">🚀</div>
           <h3>Iniciar nova avaliação</h3>
           <p>Quero avaliar a maturidade de gestão da minha empresa agora.</p>
@@ -570,11 +601,6 @@ function renderLanding(app){
       <p>Avaliação de Maturidade de Gestão · C1.SHIFT · Gestão de Dono</p>
     </div>
   </div>`;
-  // handle code-entry-public
-  if(Router.current==='code-entry-public'){
-    renderLanding(app);// re-render then show modal
-    showCodeEntryModal();
-  }
 }
 
 function showCodeEntryModal(){
@@ -625,7 +651,9 @@ function submitPublicCode(){
   const group=DB.groups().find(g=>g.code===code&&g.status==='active');
   if(!group){document.getElementById('code-err').classList.remove('hidden');return;}
   closeModal();
-  Router.go('register',{code});
+  Pending.code=code;
+  Pending.newGroup=false;
+  Router.go('register');
 }
 
 function closeModal(){document.getElementById('modal-root').innerHTML='';}
@@ -634,6 +662,9 @@ function closeModal(){document.getElementById('modal-root').innerHTML='';}
 //  LOGIN
 // ══════════════════════════════════════════════
 function renderLogin(app){
+  const code=Pending.code;
+  const group=code?DB.groups().find(g=>g.code===code):null;
+  const codeHint=group?`<div class="alert alert-info mb16">Entrando na avaliação de <strong>${escHtml(group.companyName)}</strong> (código <strong>${escHtml(code)}</strong>).</div>`:'';
   app.innerHTML=`
   <div class="auth-wrap">
     <div class="auth-box">
@@ -642,7 +673,8 @@ function renderLogin(app){
         <div class="g2">Dono</div>
       </div>
       <div class="auth-title">Entrar</div>
-      <div class="auth-sub">Acesse sua conta para continuar sua avaliação.</div>
+      <div class="auth-sub">Acesse sua conta para continuar.</div>
+      ${codeHint}
       <div id="login-err"></div>
       <div class="form-group">
         <label class="form-label">E-mail</label>
@@ -655,7 +687,7 @@ function renderLogin(app){
       </div>
       <button class="btn btn-primary btn-block" onclick="doLogin()">Entrar</button>
       <div class="auth-switch">Não tem conta? <a href="#" onclick="Router.go('register');return false">Criar conta</a></div>
-      <div class="mt8 text-center"><a href="#" style="font-size:.78rem;color:var(--gray)" onclick="showAdminHint();return false">Acesso administrador</a></div>
+      <div class="mt8 text-center"><a href="#" style="font-size:.72rem;color:var(--gray-light)" onclick="showAdminHint();return false">Acesso administrador</a></div>
     </div>
   </div>`;
 }
@@ -669,15 +701,28 @@ function doLogin(){
   const user=DB.users().find(u=>u.email===email&&u.password===pass);
   if(!user){err.innerHTML='<div class="alert alert-error">E-mail ou senha incorretos.</div>';return;}
   DB.login(user);
-  if(user.role==='admin')Router.go('admin');else Router.go('home');
+  if(user.role==='admin'){Pending.clear();Router.go('admin');return;}
+  afterAuth(user);
 }
 
 // ══════════════════════════════════════════════
 //  REGISTER
 // ══════════════════════════════════════════════
-function renderRegister(app,params){
-  params=params||{};
-  const codeHint=params.code?`<div class="alert alert-info mb16">Código de avaliação: <strong>${escHtml(params.code)}</strong></div>`:'';
+function renderRegister(app){
+  const code=Pending.code;
+  const isNewGroup=Pending.newGroup;
+  // Find group info for code hint
+  const group=code?DB.groups().find(g=>g.code===code):null;
+  const codeHint=code?`
+    <div class="alert alert-info mb16">
+      Você está participando da avaliação de <strong>${escHtml(group?.companyName||'empresa')}</strong>.<br>
+      Código: <strong style="font-family:monospace;font-size:1rem">${escHtml(code)}</strong>
+    </div>`:
+    isNewGroup?`<div class="alert alert-success mb16">Você irá criar uma nova avaliação e receberá um código para compartilhar.</div>`:'';
+  const title=isNewGroup?'Iniciar avaliação':'Criar conta';
+  const sub=code?'Preencha seus dados para participar desta avaliação.'
+    :isNewGroup?'Preencha seus dados para iniciar a avaliação da sua empresa.'
+    :'Preencha seus dados para acessar a plataforma.';
   app.innerHTML=`
   <div class="auth-wrap">
     <div class="auth-box">
@@ -685,18 +730,18 @@ function renderRegister(app,params){
         <div class="g1">Gestão de</div>
         <div class="g2">Dono</div>
       </div>
-      <div class="auth-title">${params.newGroup?'Iniciar avaliação':'Criar conta'}</div>
-      <div class="auth-sub">Preencha seus dados para ${params.newGroup?'iniciar uma nova avaliação':'participar da avaliação'}.</div>
+      <div class="auth-title">${title}</div>
+      <div class="auth-sub">${sub}</div>
       ${codeHint}
       <div id="reg-err"></div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Nome <span>*</span></label>
-          <input id="r-name" class="form-input" type="text" placeholder="Seu nome" />
+          <input id="r-name" class="form-input" type="text" placeholder="Seu nome" autocomplete="name" />
         </div>
         <div class="form-group">
-          <label class="form-label">Empresa <span>*</span></label>
-          <input id="r-company" class="form-input" type="text" placeholder="Nome da empresa" />
+          <label class="form-label">Sua empresa <span>*</span></label>
+          <input id="r-company" class="form-input" type="text" placeholder="Empresa onde você trabalha" autocomplete="organization" />
         </div>
       </div>
       <div class="form-group">
@@ -706,7 +751,7 @@ function renderRegister(app,params){
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">WhatsApp</label>
-          <input id="r-phone" class="form-input" type="tel" placeholder="(00) 00000-0000" />
+          <input id="r-phone" class="form-input" type="tel" placeholder="(00) 00000-0000" autocomplete="tel" />
         </div>
         <div class="form-group">
           <label class="form-label">Cargo / Função</label>
@@ -714,7 +759,7 @@ function renderRegister(app,params){
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Perfil no grupo <span>*</span></label>
+        <label class="form-label">Seu papel nesta avaliação <span>*</span></label>
         <select id="r-profile" class="form-select">
           <option value="">Selecione...</option>
           <option>Sócio</option><option>Fundador</option><option>Sucessor</option>
@@ -726,14 +771,13 @@ function renderRegister(app,params){
         <label class="form-label">Senha <span>*</span></label>
         <input id="r-pass" class="form-input" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
       </div>
-      <button class="btn btn-primary btn-block" onclick="doRegister(${JSON.stringify(params).replace(/"/g,"'")})">Criar conta e iniciar</button>
+      <button class="btn btn-primary btn-block" onclick="doRegister()">Criar conta e continuar</button>
       <div class="auth-switch">Já tem conta? <a href="#" onclick="Router.go('login');return false">Entrar</a></div>
     </div>
   </div>`;
 }
 
-function doRegister(params){
-  params=params||{};
+function doRegister(){
   const name=document.getElementById('r-name').value.trim();
   const company=document.getElementById('r-company').value.trim();
   const email=document.getElementById('r-email').value.trim().toLowerCase();
@@ -747,18 +791,24 @@ function doRegister(params){
   }
   if(pass.length<6){err.innerHTML='<div class="alert alert-error">A senha deve ter pelo menos 6 caracteres.</div>';return;}
   const users=DB.users();
-  if(users.find(u=>u.email===email)){err.innerHTML='<div class="alert alert-error">Este e-mail já está cadastrado. <a href="#" onclick="Router.go(\'login\')">Entrar</a></div>';return;}
+  if(users.find(u=>u.email===email)){
+    err.innerHTML='<div class="alert alert-error">Este e-mail já está cadastrado. <a href="#" onclick="Router.go(\'login\')">Entrar →</a></div>';return;
+  }
   const user={id:genId('u'),name,company,email,phone,position,profile,password:pass,
     role:'respondent',createdAt:new Date().toISOString()};
   users.push(user);DB.saveUsers(users);DB.login(user);
-  if(params.code){
-    // join existing group
-    const group=DB.groups().find(g=>g.code===params.code);
-    if(group){startSession(user,group);return;}
+  afterAuth(user);
+}
+
+function afterAuth(user){
+  const code=Pending.code;
+  const isNewGroup=Pending.newGroup;
+  if(code){
+    const group=DB.groups().find(g=>g.code===code&&g.status==='active');
+    if(group){Pending.clear();startSession(user,group);return;}
+    toast('Código inválido ou inativo.',3000);
   }
-  if(params.newGroup){
-    Router.go('group-setup',{newGroup:true});return;
-  }
+  if(isNewGroup){Pending.clear();Router.go('group-setup');return;}
   Router.go('home');
 }
 
@@ -787,9 +837,9 @@ function renderGroupSetup(app,params){
         <div class="form-hint">Opcional. Ajuda a identificar esta avaliação no futuro.</div>
       </div>
       <div class="alert alert-info">
-        Um código de 6 dígitos será gerado automaticamente para você compartilhar com outros respondentes (sócios, líderes, familiares) da mesma empresa.
+        Um código único de 6 dígitos será gerado para esta empresa. Ele identifica a empresa avaliada — não você como respondente. Compartilhe apenas com pessoas que devem participar desta avaliação (sócios, líderes, familiares).
       </div>
-      <button class="btn btn-primary btn-block mt12" onclick="doCreateGroup()">Gerar código e iniciar</button>
+      <button class="btn btn-primary btn-block mt12" onclick="doCreateGroup()">Gerar código e iniciar avaliação</button>
     </div>
   </div>`;
 }
@@ -809,7 +859,12 @@ function doCreateGroup(){
 function startSession(user,group){
   const q=DB.questionnaire();
   const existing=DB.sessions().find(s=>s.userId===user.id&&s.groupId===group.id&&s.questionnaireId===q.id);
-  if(existing){Router.go('questionnaire',{sessionId:existing.id});return;}
+  if(existing){
+    // Completed → results; in_progress/reopened → questionnaire
+    if(existing.status==='completed')Router.go('results',{sessionId:existing.id});
+    else Router.go('questionnaire',{sessionId:existing.id});
+    return;
+  }
   const session={id:genId('s'),userId:user.id,groupId:group.id,questionnaireId:q.id,
     status:'in_progress',answers:{},startedAt:new Date().toISOString(),createdAt:new Date().toISOString()};
   const sessions=DB.sessions();sessions.push(session);DB.saveSessions(sessions);
@@ -850,10 +905,11 @@ function renderHome(app){
           </div>
           <span class="badge ${statusClass}">${statusLabel}</span>
         </div>
-        <div class="code-display" style="padding:8px 14px;margin-bottom:10px">
+        <div class="code-display" style="padding:8px 14px;margin-bottom:6px">
           <div class="code-val" style="font-size:1.2rem">${escHtml(g.code)}</div>
-          <div class="code-lbl">Código da avaliação · clique para copiar</div>
+          <div class="code-lbl">Código da empresa · clique para compartilhar</div>
         </div>
+        <div class="text-xs text-gray mb8" style="text-align:center">Este código identifica <strong>${escHtml(g.companyName)}</strong>. Compartilhe apenas com pessoas desta avaliação.</div>
         ${s.status==='completed'&&scores.overall!=null?`
           <div class="flex gap12 items-center">
             <div style="font-size:1.4rem;font-weight:900;color:${scoreColor(scores.overall)}">${scores.overall.toFixed(1)}</div>
@@ -884,13 +940,13 @@ function renderHome(app){
     ${sessionsHtml}
   </div>`;
 
-  // Make code display copy on click
+  // Code display → share disclaimer
   document.querySelectorAll('.code-display').forEach(el=>{
     el.style.cursor='pointer';
     el.addEventListener('click',e=>{
       e.stopPropagation();
-      const code=el.querySelector('.code-val').textContent;
-      navigator.clipboard?.writeText(code).then(()=>toast('Código copiado!'));
+      const code=el.querySelector('.code-val').textContent.trim();
+      showShareDisclaimer(code);
     });
   });
 }
@@ -928,7 +984,14 @@ function submitJoinCode(){
   if(code.length!==6){document.getElementById('code-err').classList.remove('hidden');return;}
   const group=DB.groups().find(g=>g.code===code&&g.status==='active');
   if(!group){document.getElementById('code-err').classList.remove('hidden');return;}
+  const q=DB.questionnaire();
+  const existing=DB.sessions().find(s=>s.userId===u.id&&s.groupId===group.id&&s.questionnaireId===q.id);
   closeModal();
+  if(existing&&existing.status==='completed'){
+    toast('Você já concluiu esta avaliação. Redirecionando para o resultado...',3000);
+    setTimeout(()=>Router.go('results',{sessionId:existing.id}),1200);
+    return;
+  }
   startSession(u,group);
 }
 
@@ -961,19 +1024,20 @@ function renderQuestionnaire(app,params){
 
 function renderDimension(app){
   const{questionnaire:q,session,dimIdx}=QState;
+  const group=DB.groups().find(g=>g.id===session.groupId);
   const totalQ=q.dimensions.reduce((a,d)=>a+d.questions.length,0);
   const doneQ=Object.values(session.answers||{}).filter(a=>a.value!=null).length;
   const pct=Math.round((doneQ/totalQ)*100);
   const dim=q.dimensions[dimIdx];
   const isLast=dimIdx===q.dimensions.length-1;
-  const prevDone=dimIdx>0?q.dimensions[dimIdx-1].questions.every(qn=>session.answers[qn.id]?.value!=null):true;
 
   app.innerHTML=`
   <div class="q-header">
     <div class="q-meta">
       <span class="q-dim-name">${escHtml(dim.name)}</span>
-      <span class="q-count">Dimensão ${dimIdx+1} de ${q.dimensions.length} · ${pct}% concluído</span>
+      <span class="q-count" style="text-align:right">${dimIdx+1}/${q.dimensions.length} · ${pct}%</span>
     </div>
+    ${group?`<div class="text-xs text-gray" style="margin-top:2px">Empresa: <strong>${escHtml(group.companyName)}</strong></div>`:''}
     <div class="q-progress-bar"><div class="q-progress-fill" style="width:${pct}%"></div></div>
   </div>
   <div class="q-body">
@@ -1122,84 +1186,99 @@ function renderResults(app,params){
   const u=DB.currentUser();
   const q=DB.questionnaire();
   const group=DB.groups().find(g=>g.id===session.groupId)||{code:'------',companyName:'Grupo'};
-  const groupSessions=DB.sessions().filter(s=>s.groupId===group.id&&s.questionnaireId===q.id);
+  const allGroupSessions=DB.sessions().filter(s=>s.groupId===group.id&&s.questionnaireId===q.id);
   const myScores=calcScores(session,q);
-  const groupScores=calcGroupScores(groupSessions,q);
-  const othersScores=calcOthersScores(groupSessions,session.id,q);
+  const completedCount=allGroupSessions.filter(s=>s.status==='completed').length;
+  const hasMultiple=completedCount>1;
+  // Only calc group/others if multiple respondents
+  const groupScores=hasMultiple?calcGroupScores(allGroupSessions,q):null;
+  const othersScores=hasMultiple?calcOthersScores(allGroupSessions,session.id,q):null;
   const rt=myScores.overall!=null?getResultText(myScores.overall):null;
-  const completedCount=groupSessions.filter(s=>s.status==='completed').length;
-
   const shareUrl=`${location.origin}${location.pathname}?codigo=${group.code}`;
+
   const dimRows=q.dimensions.map(dim=>{
     const myVal=myScores.dimScores[dim.id];
-    const grpVal=groupScores?.dimScores[dim.id];
+    const grpVal=hasMultiple?groupScores?.dimScores[dim.id]:null;
     const bar=myVal!=null?`<div class="score-bar"><div class="score-bar-fill" style="width:${(myVal/4)*100}%;background:${scoreColor(myVal)}"></div></div>`:'';
     return `
     <tr>
       <td>${escHtml(dim.name)}</td>
       <td class="text-center">${myVal!=null?`<strong style="color:${scoreColor(myVal)}">${myVal.toFixed(1)}</strong>`:'—'}</td>
-      <td class="text-center">${grpVal!=null&&completedCount>1?`${grpVal.toFixed(1)}`:'—'}</td>
-      <td style="width:120px">${bar}</td>
+      <td class="text-center">${grpVal!=null?grpVal.toFixed(1):'—'}</td>
+      <td style="min-width:90px">${bar}</td>
     </tr>`;
   }).join('');
 
+  const radarNote=!hasMultiple?`
+    <div class="alert alert-info mt12" style="font-size:.8rem">
+      Apenas a sua nota está sendo exibida. Quando outros respondentes da mesma empresa concluírem a avaliação, o radar passará a mostrar também a média dos demais e a média geral do grupo.
+    </div>`:'';
+
+  const legendHtml=hasMultiple?`
+    <div class="radar-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota</div>
+      ${othersScores?'<div class="legend-item"><div class="legend-dot" style="background:#10B981"></div>Média dos demais</div>':''}
+      <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>Média geral do grupo</div>
+    </div>`:`<div class="radar-legend"><div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota individual</div></div>`;
+
   app.innerHTML=`
   <div class="result-hero">
-    <div class="text-xs text-gray mb8">${escHtml(group.companyName)} · Código: <strong>${escHtml(group.code)}</strong></div>
+    <div class="text-xs text-gray mb8">${escHtml(group.companyName)}</div>
     ${myScores.overall!=null?`
     <div class="result-score-big" style="color:${scoreColor(myScores.overall)}">${myScores.overall.toFixed(1)}</div>
-    <div class="result-score-max">/ 4,0</div>
+    <div class="result-score-max">/ 4,0 — minha avaliação</div>
     <div class="result-classification ${rt?.badge||''}" style="background:${scoreBg(myScores.overall)};color:${scoreColor(myScores.overall)}">${rt?.classification||''}</div>
     `:'<div class="text-gray">Cálculo não disponível</div>'}
-    ${completedCount>1?`<div class="respondents-note mt8">${completedCount} respondentes concluíram neste grupo</div>`:''}
+    ${hasMultiple?`<div class="respondents-note mt8">${completedCount} respondentes concluíram neste grupo</div>`:'<div class="respondents-note mt8">Você é o único respondente até agora</div>'}
   </div>
   <div class="page">
     ${rt?`
     <div class="card mb16">
       <div class="card-title">Leitura do resultado</div>
       <p class="text-sm" style="line-height:1.7;color:var(--gray);margin-top:8px">${escHtml(rt.text)}</p>
-      <div class="mt12 alert alert-info" style="font-size:.82rem"><strong>Próximo passo:</strong> ${escHtml(rt.next)}</div>
+      <div class="mt12 alert alert-info" style="font-size:.82rem"><strong>Próximo passo sugerido:</strong> ${escHtml(rt.next)}</div>
+      <div class="privacy-note mt12">
+        <strong>Privacidade:</strong> Você vê apenas sua nota individual e, quando houver mais respondentes, as médias agregadas do grupo. Nomes, e-mails, cargos e respostas individuais de outros respondentes nunca são exibidos para respondentes comuns.
+      </div>
     </div>`:''}
     <div class="radar-wrap mb16">
-      <div class="radar-title">Radar por dimensão</div>
-      <canvas id="radar-canvas" style="max-height:380px"></canvas>
-      ${completedCount>1?`
-      <div class="radar-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota</div>
-        ${othersScores?'<div class="legend-item"><div class="legend-dot" style="background:#10B981"></div>Média dos demais</div>':''}
-        <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div>Média do grupo</div>
-      </div>`:'<div class="radar-legend"><div class="legend-item"><div class="legend-dot" style="background:#2557B7"></div>Minha nota</div></div>'}
+      <div class="radar-title">Radar por dimensão ${hasMultiple?`<span class="text-xs text-gray">(${completedCount} respondentes)</span>`:''}</div>
+      <canvas id="radar-canvas" style="max-height:360px"></canvas>
+      ${legendHtml}
+      ${radarNote}
     </div>
     <div class="card mb16">
       <div class="card-title mb12">Detalhamento por dimensão</div>
       <div style="overflow-x:auto">
         <table class="dim-table">
           <thead><tr>
-            <th>Dimensão</th><th class="text-center">Minha nota</th>
-            <th class="text-center">${completedCount>1?'Média grupo':'—'}</th>
-            <th>Progresso</th>
+            <th>Dimensão</th>
+            <th class="text-center">Minha nota</th>
+            <th class="text-center">${hasMultiple?'Média do grupo':'—'}</th>
+            <th style="min-width:90px">Barra</th>
           </tr></thead>
           <tbody>${dimRows}</tbody>
         </table>
       </div>
+      ${hasMultiple?`<div class="privacy-note">Médias calculadas sobre ${completedCount} respostas concluídas. Respostas individuais de outros respondentes não são acessíveis por aqui.</div>`:''}
     </div>
     <div class="card mb16">
-      <div class="card-title mb8">Compartilhar avaliação</div>
-      <div class="text-sm text-gray mb12">Compartilhe o código abaixo para convidar sócios, líderes e familiares a responderem a mesma avaliação. Quanto mais pessoas responderem, mais rica será a leitura consolidada.</div>
-      <div class="code-display" onclick="copyCode('${escHtml(group.code)}')" style="cursor:pointer;margin-bottom:12px">
-        <div class="code-val">${escHtml(group.code)}</div>
-        <div class="code-lbl">Clique para copiar o código</div>
+      <div class="card-title mb8">Convidar outros respondentes</div>
+      <div class="text-sm text-gray mb12">
+        O código abaixo identifica a empresa <strong>${escHtml(group.companyName)}</strong> nesta avaliação. Compartilhe com sócios, líderes e familiares que devem participar. Cada pessoa responde individualmente e o radar consolidado fica mais rico com mais respondentes.
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="copyInviteLink('${escHtml(shareUrl)}')">🔗 Copiar link de convite</button>
+      <button class="btn btn-primary btn-sm btn-block" onclick="showShareDisclaimer('${escHtml(group.code)}','${escHtml(shareUrl)}')">
+        🔗 Compartilhar código / link de convite
+      </button>
     </div>
-    <div class="flex gap8 mt16">
-      <button class="btn btn-secondary btn-sm" onclick="Router.go('home')">← Voltar ao início</button>
-      <button class="btn btn-secondary btn-sm" onclick="exportMyCSV('${session.id}')">📥 Exportar CSV</button>
+    <div class="flex gap8 mt16" style="flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="Router.go('home')">← Início</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportMyCSV('${session.id}')">📥 Exportar meu CSV</button>
+      ${u.role==='admin'?`<button class="btn btn-secondary btn-sm" onclick="Router.go('admin',{tab:'results',groupId:'${group.id}'})">📊 Painel consolidado</button>`:''}
     </div>
-    ${completedCount>1&&u.role==='admin'?`<div class="mt8"><button class="btn btn-secondary btn-sm" onclick="Router.go('admin',{tab:'results',groupId:'${group.id}'})">📊 Ver painel consolidado</button></div>`:''}
   </div>`;
 
-  buildRadar(q,myScores,othersScores,completedCount>1?groupScores:null);
+  buildRadar(q,myScores,othersScores,hasMultiple?groupScores:null);
 }
 
 function buildRadar(q,myScores,othersScores,groupScores){
@@ -1248,6 +1327,31 @@ function buildRadar(q,myScores,othersScores,groupScores){
 
 function copyCode(code){navigator.clipboard?.writeText(code).then(()=>toast('Código copiado!'));}
 function copyInviteLink(url){navigator.clipboard?.writeText(url).then(()=>toast('Link copiado!'));}
+
+function showShareDisclaimer(code,url){
+  const shareUrl=url||`${location.origin}${location.pathname}?codigo=${code}`;
+  document.getElementById('modal-root').innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this){closeModal()}">
+    <div class="modal">
+      <div class="modal-title">Antes de compartilhar</div>
+      <div class="share-disclaimer">
+        <strong>Atenção:</strong> Quem tiver este código poderá participar da avaliação desta empresa e visualizar o resultado consolidado do grupo (médias agregadas). Não será possível ver respostas individuais de outros respondentes, mas a pessoa terá acesso à visão geral da empresa.<br><br>
+        Compartilhe apenas com pessoas que devem participar desta avaliação.
+      </div>
+      <div class="code-display mb16" style="cursor:default">
+        <div class="code-val">${escHtml(code)}</div>
+        <div class="code-lbl">Código da empresa nesta avaliação</div>
+      </div>
+      <div class="modal-footer" style="flex-direction:column;gap:8px">
+        <button class="btn btn-primary btn-block" onclick="doCopyCode('${escHtml(code)}')">📋 Copiar código</button>
+        <button class="btn btn-secondary btn-block" onclick="doCopyLink('${escHtml(shareUrl)}')">🔗 Copiar link de convite</button>
+        <button class="btn btn-secondary btn-block" style="color:var(--gray)" onclick="closeModal()">Não compartilhar agora</button>
+      </div>
+    </div>
+  </div>`;
+}
+function doCopyCode(code){copyCode(code);closeModal();}
+function doCopyLink(url){copyInviteLink(url);closeModal();}
 
 function exportMyCSV(sessionId){
   const session=DB.sessions().find(s=>s.id===sessionId);if(!session)return;
@@ -1364,29 +1468,32 @@ function adminGroups(el){
   ${groups.length?`
   <div class="table-wrap">
     <table class="data-table">
-      <thead><tr><th>Código</th><th>Empresa</th><th>Grupo</th><th>Respondentes</th><th>Status</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Código</th><th>Empresa</th><th>Em andamento</th><th>Concluídos</th><th>Total</th><th>Status</th><th>Criado em</th><th>Ações</th></tr></thead>
       <tbody>${groups.map(g=>{
         const gSessions=sessions.filter(s=>s.groupId===g.id);
-        const completed=gSessions.filter(s=>s.status==='completed').length;
+        const inProg=gSessions.filter(s=>s.status==='in_progress').length;
+        const done=gSessions.filter(s=>s.status==='completed').length;
         const statusClass={active:'badge-green',paused:'badge-amber',closed:'badge-red',draft:'badge-gray'}[g.status]||'badge-gray';
         const statusLabel={active:'Ativo',paused:'Pausado',closed:'Encerrado',draft:'Rascunho'}[g.status]||g.status;
+        const shareUrl=`${location.origin}${location.pathname}?codigo=${g.code}`;
         return `<tr>
-          <td><code style="font-family:monospace;font-weight:700;color:var(--blue)">${escHtml(g.code)}</code></td>
-          <td>${escHtml(g.companyName)}</td>
-          <td class="text-sm text-gray">${escHtml(g.groupName||'')}</td>
-          <td>${gSessions.length} <span class="text-xs text-gray">(${completed} concluídos)</span></td>
+          <td><code style="font-family:monospace;font-weight:700;color:var(--blue);letter-spacing:.1em">${escHtml(g.code)}</code></td>
+          <td><strong>${escHtml(g.companyName)}</strong><div class="text-xs text-gray">${escHtml(g.groupName&&g.groupName!==g.companyName?g.groupName:'')}</div></td>
+          <td class="text-center">${inProg?`<span class="badge badge-blue">${inProg}</span>`:'—'}</td>
+          <td class="text-center">${done?`<span class="badge badge-green">${done}</span>`:'—'}</td>
+          <td class="text-center">${gSessions.length}</td>
           <td><span class="badge ${statusClass}">${statusLabel}</span></td>
           <td class="text-xs text-gray">${new Date(g.createdAt).toLocaleDateString('pt-BR')}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" onclick="copyCode('${escHtml(g.code)}')">📋</button>
-            <button class="btn btn-secondary btn-sm" onclick="adminViewGroup('${g.id}')">Ver</button>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" onclick="showShareDisclaimer('${escHtml(g.code)}','${escHtml(shareUrl)}')" title="Copiar link de convite">🔗</button>
+            <button class="btn btn-secondary btn-sm" onclick="adminViewGroup('${g.id}')">Resultados</button>
             <button class="btn btn-secondary btn-sm" onclick="toggleGroupStatus('${g.id}')">${g.status==='active'?'Pausar':'Ativar'}</button>
           </td>
         </tr>`;
       }).join('')}
       </tbody>
     </table>
-  </div>`:'<div class="empty"><div class="empty-icon">🏢</div><div>Nenhum grupo criado.</div></div>'}`;
+  </div>`:'<div class="empty"><div class="empty-icon">🏢</div><div>Nenhum grupo criado. Use o botão acima para criar o primeiro grupo de avaliação.</div></div>'}`;
 }
 
 function showCreateGroupModal(){
@@ -1418,7 +1525,7 @@ function doCreateGroupAdmin(){
   const group={id:genId('g'),code,companyName:company,groupName:groupName||company,
     createdBy:u.id,status:'active',createdAt:new Date().toISOString()};
   const groups=DB.groups();groups.push(group);DB.saveGroups(groups);
-  closeModal();toast('Grupo criado! Código: '+code,3000);renderAdminContent();
+  closeModal();toast('Grupo criado! Código: '+code,4000);renderAdminContent();
 }
 
 function toggleGroupStatus(groupId){
@@ -1618,16 +1725,19 @@ function exportRespondentsCSV(){
 // ══════════════════════════════════════════════
 function init(){
   ensureAdmin();
-  // Handle ?codigo= in URL
+  // Handle ?codigo= in URL — set Pending then route
   const urlParams=new URLSearchParams(location.search);
-  const code=urlParams.get('codigo');
-  if(code){
-    const u=DB.currentUser();
-    if(u){
-      const group=DB.groups().find(g=>g.code===code.toUpperCase()&&g.status==='active');
-      if(group){startSession(u,group);return;}
-    } else {
-      Router.go('register',{code:code.toUpperCase()});return;
+  const rawCode=(urlParams.get('codigo')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(rawCode.length===6){
+    const group=DB.groups().find(g=>g.code===rawCode&&g.status==='active');
+    if(group){
+      const u=DB.currentUser();
+      if(u){startSession(u,group);return;}
+      // Not logged in — store code and route to register
+      Pending.code=rawCode;
+      Pending.newGroup=false;
+      Router.go('register');
+      return;
     }
   }
   const u=DB.currentUser();
