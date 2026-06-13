@@ -38,9 +38,14 @@ app.use('/api/rankings',    rankingsRoutes);
 // SPA fallback
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-initDatabase();
-
-app.listen(PORT, () => {
-  console.log(`⚽ Bolão Copa 2026 → http://localhost:${PORT}`);
-  if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET não definido! Use o arquivo .env');
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`⚽ Bolão Copa 2026 → http://localhost:${PORT}`);
+      if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET não definido! Use o arquivo .env');
+    });
+  })
+  .catch(err => {
+    console.error('❌ Falha ao inicializar banco de dados:', err.message);
+    process.exit(1);
+  });
